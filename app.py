@@ -1,6 +1,7 @@
 import streamlit as st
 
 from modules.database import init_db, get_dashboard_stats
+from modules.clients import render_clients_page
 
 
 # =========================================================
@@ -16,7 +17,7 @@ st.set_page_config(
 
 
 # =========================================================
-# INITIALIZE DATABASE
+# DATABASE
 # =========================================================
 
 init_db()
@@ -37,13 +38,13 @@ st.markdown(
     }
 
     [data-testid="stSidebar"] {
-        border-right: 1px solid rgba(128, 128, 128, 0.18);
+        border-right: 1px solid rgba(128,128,128,.18);
     }
 
     .brand {
-        font-size: 1.35rem;
+        font-size: 1.4rem;
         font-weight: 800;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.03em;
         margin-bottom: 1.5rem;
     }
 
@@ -54,35 +55,28 @@ st.markdown(
     }
 
     .metric-card {
-        padding: 1.2rem;
-        border: 1px solid rgba(128, 128, 128, 0.18);
+        padding: 1.25rem;
+        border: 1px solid rgba(128,128,128,.18);
         border-radius: 16px;
-        background: rgba(128, 128, 128, 0.035);
+        background: rgba(128,128,128,.035);
         min-height: 115px;
     }
 
     .metric-label {
-        font-size: 0.86rem;
+        font-size: .85rem;
         color: #777;
     }
 
     .metric-value {
         font-size: 1.8rem;
         font-weight: 750;
-        margin-top: 0.3rem;
+        margin-top: .3rem;
     }
 
     .section-title {
         font-size: 1.05rem;
         font-weight: 700;
-        margin: 1.6rem 0 0.8rem;
-    }
-
-    .info-card {
-        padding: 1.3rem;
-        border: 1px solid rgba(128, 128, 128, 0.18);
-        border-radius: 16px;
-        background: rgba(128, 128, 128, 0.035);
+        margin: 1.7rem 0 .8rem;
     }
 
     </style>
@@ -124,13 +118,13 @@ with st.sidebar:
     st.caption("WORKSPACE")
 
     st.caption(
-        "All-in-one client management for freelancers "
-        "and small agencies."
+        "All-in-one client management for "
+        "freelancers & small agencies."
     )
 
     st.divider()
 
-    st.caption("ClientFlow AI v1.0")
+    st.caption("ClientFlow AI • v1.0")
 
 
 # =========================================================
@@ -162,43 +156,65 @@ if page == "📊 Dashboard":
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
+
         st.markdown(
             f"""
             <div class="metric-card">
-                <div class="metric-label">Total Clients</div>
-                <div class="metric-value">{stats["clients"]}</div>
+                <div class="metric-label">
+                    Total Clients
+                </div>
+
+                <div class="metric-value">
+                    {stats["clients"]}
+                </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
     with col2:
+
         st.markdown(
             f"""
             <div class="metric-card">
-                <div class="metric-label">Active Projects</div>
-                <div class="metric-value">{stats["projects"]}</div>
+                <div class="metric-label">
+                    Active Projects
+                </div>
+
+                <div class="metric-value">
+                    {stats["projects"]}
+                </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
     with col3:
+
         st.markdown(
             f"""
             <div class="metric-card">
-                <div class="metric-label">Pending Tasks</div>
-                <div class="metric-value">{stats["tasks"]}</div>
+                <div class="metric-label">
+                    Pending Tasks
+                </div>
+
+                <div class="metric-value">
+                    {stats["tasks"]}
+                </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
     with col4:
+
         st.markdown(
             f"""
             <div class="metric-card">
-                <div class="metric-label">Outstanding</div>
+                <div class="metric-label">
+                    Outstanding
+                </div>
+
                 <div class="metric-value">
                     ${stats["outstanding"]:,.0f}
                 </div>
@@ -208,32 +224,32 @@ if page == "📊 Dashboard":
         )
 
     # -----------------------------------------------------
-    # MAIN DASHBOARD
+    # OVERVIEW
     # -----------------------------------------------------
 
     st.markdown(
-        '<div class="section-title">Business Overview</div>',
+        '<div class="section-title">'
+        "Business Overview"
+        "</div>",
         unsafe_allow_html=True,
     )
 
-    left, right = st.columns([1.55, 1])
+    left, right = st.columns([1.5, 1])
 
     with left:
 
         st.markdown("### Revenue Overview")
 
         st.info(
-            "Revenue analytics will appear here as invoices "
-            "and payments are added."
+            "Revenue analytics will appear here "
+            "as invoices and payments are added."
         )
 
         st.markdown("### Recent Activity")
 
-        st.empty()
-
         st.caption(
-            "No activity yet. Add your first client or project "
-            "to get started."
+            "No activity yet. Add your first client "
+            "or project to get started."
         )
 
     with right:
@@ -244,40 +260,71 @@ if page == "📊 Dashboard":
             "＋ Add Client",
             use_container_width=True,
         ):
+
             st.session_state["quick_action"] = "Clients"
+
+            st.info(
+                "Open **Clients** from the sidebar "
+                "to add your first client."
+            )
 
         if st.button(
             "＋ Create Project",
             use_container_width=True,
         ):
+
             st.session_state["quick_action"] = "Projects"
+
+            st.info(
+                "Projects module will be added next."
+            )
 
         if st.button(
             "＋ Create Proposal",
             use_container_width=True,
         ):
+
             st.session_state["quick_action"] = "Proposals"
+
+            st.info(
+                "Proposals module will be added later."
+            )
 
         if st.button(
             "＋ Create Invoice",
             use_container_width=True,
         ):
+
             st.session_state["quick_action"] = "Invoices"
+
+            st.info(
+                "Invoices module will be added later."
+            )
 
     # -----------------------------------------------------
     # GETTING STARTED
     # -----------------------------------------------------
 
     st.markdown(
-        '<div class="section-title">Getting Started</div>',
+        '<div class="section-title">'
+        "Getting Started"
+        "</div>",
         unsafe_allow_html=True,
     )
 
     st.success(
         "Your ClientFlow AI workspace is ready. "
-        "Next we’ll add the complete client, project, "
-        "task, proposal, invoice, AI and reporting workflows."
+        "Add your first client to begin."
     )
+
+
+# =========================================================
+# CLIENTS
+# =========================================================
+
+elif page == "👥 Clients":
+
+    render_clients_page()
 
 
 # =========================================================
@@ -287,11 +334,6 @@ if page == "📊 Dashboard":
 else:
 
     module_info = {
-
-        "👥 Clients": (
-            "Clients",
-            "Manage leads, active clients, and completed relationships.",
-        ),
 
         "📁 Projects": (
             "Projects",
@@ -336,6 +378,6 @@ else:
     )
 
     st.info(
-        "This module is part of the ClientFlow AI foundation. "
-        "The full workflow will be added in the next development phase."
+        "This module will be added in the next "
+        "development phase."
     )
