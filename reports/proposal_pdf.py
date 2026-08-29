@@ -12,19 +12,79 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
-    KeepTogether,
 )
 
+
+# =========================================================
+# COLORS
+# =========================================================
+
+INK = colors.HexColor("#111827")
+MUTED = colors.HexColor("#6B7280")
+BORDER = colors.HexColor("#E5E7EB")
+LIGHT = colors.HexColor("#F8FAFC")
+DARK_LIGHT = colors.HexColor("#F1F5F9")
+ACCENT = colors.HexColor("#4F46E5")
+
+
+# =========================================================
+# FOOTER
+# =========================================================
+
+def draw_footer(canvas, document):
+
+    canvas.saveState()
+
+    width, height = A4
+
+    # Footer line
+    canvas.setStrokeColor(BORDER)
+    canvas.setLineWidth(0.5)
+
+    canvas.line(
+        18 * mm,
+        13 * mm,
+        width - 18 * mm,
+        13 * mm,
+    )
+
+    # Left footer
+    canvas.setFont(
+        "Helvetica",
+        7.5,
+    )
+
+    canvas.setFillColor(MUTED)
+
+    canvas.drawString(
+        18 * mm,
+        8 * mm,
+        "ClientFlow AI • Client Management Workspace",
+    )
+
+    # Page number
+    canvas.drawRightString(
+        width - 18 * mm,
+        8 * mm,
+        f"Page {document.page}",
+    )
+
+    canvas.restoreState()
+
+
+# =========================================================
+# PDF BUILDER
+# =========================================================
 
 def build_proposal_pdf(
     proposal,
     items,
 ):
     """
-    Generate a professional PDF proposal.
+    Generate a premium ClientFlow AI proposal PDF.
 
     Returns:
-        BytesIO containing the PDF.
+        BytesIO object containing the generated PDF.
     """
 
     buffer = BytesIO()
@@ -34,56 +94,85 @@ def build_proposal_pdf(
         pagesize=A4,
         rightMargin=18 * mm,
         leftMargin=18 * mm,
-        topMargin=18 * mm,
-        bottomMargin=18 * mm,
+        topMargin=17 * mm,
+        bottomMargin=20 * mm,
         title=proposal["title"],
         author="ClientFlow AI",
+        subject="Client Proposal",
     )
 
     styles = getSampleStyleSheet()
 
+    # =====================================================
+    # STYLES
+    # =====================================================
+
     brand_style = ParagraphStyle(
         "Brand",
-        parent=styles["Heading1"],
-        fontSize=20,
-        leading=24,
-        spaceAfter=4,
+        parent=styles["Normal"],
         fontName="Helvetica-Bold",
+        fontSize=18,
+        leading=21,
+        textColor=INK,
     )
 
-    small_style = ParagraphStyle(
-        "Small",
+    brand_subtitle = ParagraphStyle(
+        "BrandSubtitle",
         parent=styles["Normal"],
-        fontSize=8.5,
-        leading=12,
-        textColor=colors.HexColor("#777777"),
+        fontName="Helvetica",
+        fontSize=7.5,
+        leading=10,
+        textColor=MUTED,
+    )
+
+    eyebrow_style = ParagraphStyle(
+        "Eyebrow",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=7.5,
+        leading=10,
+        textColor=ACCENT,
+        tracking=1,
     )
 
     title_style = ParagraphStyle(
         "ProposalTitle",
         parent=styles["Heading1"],
-        fontSize=22,
-        leading=28,
-        spaceBefore=8,
-        spaceAfter=8,
         fontName="Helvetica-Bold",
+        fontSize=25,
+        leading=30,
+        textColor=INK,
+        spaceBefore=4,
+        spaceAfter=8,
     )
 
     section_style = ParagraphStyle(
         "Section",
         parent=styles["Heading2"],
-        fontSize=11,
-        leading=14,
-        spaceBefore=12,
-        spaceAfter=7,
         fontName="Helvetica-Bold",
+        fontSize=9,
+        leading=12,
+        textColor=INK,
+        spaceBefore=15,
+        spaceAfter=7,
     )
 
     normal_style = ParagraphStyle(
         "NormalCustom",
         parent=styles["Normal"],
+        fontName="Helvetica",
         fontSize=9.5,
         leading=15,
+        textColor=INK,
+    )
+
+    muted_style = ParagraphStyle(
+        "Muted",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=8.5,
+        leading=12,
+        textColor=MUTED,
     )
 
     right_style = ParagraphStyle(
@@ -92,44 +181,170 @@ def build_proposal_pdf(
         alignment=TA_RIGHT,
     )
 
+    right_muted = ParagraphStyle(
+        "RightMuted",
+        parent=muted_style,
+        alignment=TA_RIGHT,
+    )
+
+    total_style = ParagraphStyle(
+        "Total",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=13,
+        leading=16,
+        textColor=INK,
+        alignment=TA_RIGHT,
+    )
+
+    # =====================================================
+    # STORY
+    # =====================================================
+
     story = []
 
     # =====================================================
     # HEADER
     # =====================================================
 
+    header = Table(
+        [
+            [
+                Paragraph(
+                    "CLIENTFLOW AI",
+                    brand_style,
+                ),
+                Paragraph(
+                    "PROPOSAL",
+                    right_muted,
+                ),
+            ],
+            [
+                Paragraph(
+                    "Client Management Workspace",
+                    brand_subtitle,
+                ),
+                Paragraph(
+                    datetime.now().strftime(
+                        "%B %d, %Y"
+                    ),
+                    right_muted,
+                ),
+            ],
+        ],
+        colWidths=[
+            110 * mm,
+            55 * mm,
+    ],
+    )
+
+    header.setStyle(
+        TableStyle(
+            [
+                (
+                    "VALIGN",
+                    (0, 0),
+                    (-1, -1),
+                    "TOP",
+                ),
+                (
+                    "LEFTPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    0,
+                ),
+                (
+                    "RIGHTPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    0,
+                ),
+                (
+                    "TOPPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    0,
+                ),
+                (
+                    "BOTTOMPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    0,
+                ),
+            ]
+        )
+    )
+
+    story.append(header)
+
+    story.append(
+        Spacer(
+            1,
+            12,
+        )
+    )
+
+    # Accent divider
+    accent_line = Table(
+        [[""]],
+        colWidths=[165 * mm],
+        rowHeights=[1.5 * mm],
+    )
+
+    accent_line.setStyle(
+        TableStyle(
+            [
+                (
+                    "BACKGROUND",
+                    (0, 0),
+                    (-1, -1),
+                    ACCENT,
+                ),
+                (
+                    "LEFTPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    0,
+                ),
+                (
+                    "RIGHTPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    0,
+                ),
+            ]
+        )
+    )
+
+    story.append(accent_line)
+
+    story.append(
+        Spacer(
+            1,
+            14,
+        )
+    )
+
+    # =====================================================
+    # PROPOSAL TITLE
+    # =====================================================
+
     story.append(
         Paragraph(
-            "CLIENTFLOW AI",
-            brand_style,
+            "PROJECT PROPOSAL",
+            eyebrow_style,
         )
     )
 
     story.append(
         Paragraph(
-            "Client Management Workspace",
-            small_style,
-        )
-    )
-
-    story.append(Spacer(1, 12))
-
-    story.append(
-        Paragraph(
-            "PROPOSAL",
-            small_style,
-        )
-    )
-
-    story.append(
-        Paragraph(
-            proposal["title"],
+            str(proposal["title"]),
             title_style,
         )
     )
 
     # =====================================================
-    # CLIENT INFORMATION
+    # CLIENT / STATUS CARD
     # =====================================================
 
     client_name = (
@@ -142,22 +357,31 @@ def build_proposal_pdf(
         or ""
     )
 
-    client_text = client_name
+    client_lines = (
+        f"<b>{client_name}</b>"
+    )
 
     if client_company:
-        client_text += f"<br/>{client_company}"
+        client_lines += (
+            f"<br/>{client_company}"
+        )
 
-    client_table = Table(
+    status = (
+        proposal["status"]
+        or "Draft"
+    )
+
+    client_card = Table(
         [
             [
                 Paragraph(
-                    "<b>PREPARED FOR</b><br/>"
-                    + client_text,
+                    "<font color='#6B7280'>PREPARED FOR</font><br/>"
+                    + client_lines,
                     normal_style,
                 ),
                 Paragraph(
-                    "<b>STATUS</b><br/>"
-                    + str(proposal["status"]),
+                    "<font color='#6B7280'>STATUS</font><br/>"
+                    f"<b>{status}</b>",
                     right_style,
                 ),
             ]
@@ -168,27 +392,21 @@ def build_proposal_pdf(
         ],
     )
 
-    client_table.setStyle(
+    client_card.setStyle(
         TableStyle(
             [
                 (
                     "BACKGROUND",
                     (0, 0),
                     (-1, -1),
-                    colors.HexColor("#F5F7FA"),
+                    LIGHT,
                 ),
                 (
                     "BOX",
                     (0, 0),
                     (-1, -1),
-                    0.5,
-                    colors.HexColor("#D9DEE5"),
-                ),
-                (
-                    "INNERPADDING",
-                    (0, 0),
-                    (-1, -1),
-                    8,
+                    0.7,
+                    BORDER,
                 ),
                 (
                     "VALIGN",
@@ -200,34 +418,34 @@ def build_proposal_pdf(
                     "LEFTPADDING",
                     (0, 0),
                     (-1, -1),
-                    10,
+                    11,
                 ),
                 (
                     "RIGHTPADDING",
                     (0, 0),
                     (-1, -1),
-                    10,
+                    11,
                 ),
                 (
                     "TOPPADDING",
                     (0, 0),
                     (-1, -1),
-                    9,
+                    10,
                 ),
                 (
                     "BOTTOMPADDING",
                     (0, 0),
                     (-1, -1),
-                    9,
+                    10,
                 ),
             ]
         )
     )
 
-    story.append(client_table)
+    story.append(client_card)
 
     # =====================================================
-    # DESCRIPTION
+    # PROJECT OVERVIEW
     # =====================================================
 
     if proposal["description"]:
@@ -243,7 +461,10 @@ def build_proposal_pdf(
             Paragraph(
                 str(
                     proposal["description"]
-                ).replace("\n", "<br/>"),
+                ).replace(
+                    "\n",
+                    "<br/>",
+                ),
                 normal_style,
             )
         )
@@ -259,15 +480,15 @@ def build_proposal_pdf(
         )
     )
 
-    service_rows = [
+    rows = [
         [
             Paragraph(
-                "<b>Service</b>",
-                normal_style,
+                "<b>SERVICE</b>",
+                muted_style,
             ),
             Paragraph(
-                "<b>Price</b>",
-                right_style,
+                "<b>PRICE</b>",
+                right_muted,
             ),
         ]
     ]
@@ -282,7 +503,7 @@ def build_proposal_pdf(
 
         total += price
 
-        service_rows.append(
+        rows.append(
             [
                 Paragraph(
                     str(item["service"]),
@@ -295,61 +516,69 @@ def build_proposal_pdf(
             ]
         )
 
-    service_rows.append(
+    rows.append(
         [
             Paragraph(
-                "<b>TOTAL</b>",
+                "<b>GRAND TOTAL</b>",
                 normal_style,
             ),
             Paragraph(
-                f"<b>${total:,.2f}</b>",
-                right_style,
+                f"${total:,.2f}",
+                total_style,
             ),
         ]
     )
 
-    service_table = Table(
-        service_rows,
+    services_table = Table(
+        rows,
         colWidths=[
             120 * mm,
             45 * mm,
-    ],
+        ],
+        repeatRows=1,
     )
 
-    service_table.setStyle(
+    services_table.setStyle(
         TableStyle(
             [
                 (
                     "BACKGROUND",
                     (0, 0),
                     (-1, 0),
-                    colors.HexColor("#F1F3F6"),
+                    DARK_LIGHT,
                 ),
                 (
-                    "GRID",
+                    "LINEBELOW",
                     (0, 0),
+                    (-1, 0),
+                    0.7,
+                    BORDER,
+                ),
+                (
+                    "LINEBELOW",
+                    (0, 1),
                     (-1, -2),
                     0.4,
-                    colors.HexColor("#D9DEE5"),
+                    BORDER,
                 ),
                 (
                     "LINEABOVE",
                     (0, -1),
                     (-1, -1),
                     1,
-                    colors.HexColor("#222222"),
-                ),
-                (
-                    "ALIGN",
-                    (1, 0),
-                    (1, -1),
-                    "RIGHT",
+                    INK,
                 ),
                 (
                     "VALIGN",
                     (0, 0),
                     (-1, -1),
                     "MIDDLE",
+                ),
+                (
+                    "ALIGN",
+                    (1, 0),
+                    (1, -1),
+                    "RIGHT",
                 ),
                 (
                     "LEFTPADDING",
@@ -367,19 +596,19 @@ def build_proposal_pdf(
                     "TOPPADDING",
                     (0, 0),
                     (-1, -1),
-                    8,
+                    9,
                 ),
                 (
                     "BOTTOMPADDING",
                     (0, 0),
                     (-1, -1),
-                    8,
+                    9,
                 ),
             ]
         )
     )
 
-    story.append(service_table)
+    story.append(services_table)
 
     # =====================================================
     # PROJECT DETAILS
@@ -396,7 +625,9 @@ def build_proposal_pdf(
                     normal_style,
                 ),
                 Paragraph(
-                    str(proposal["timeline"]),
+                    str(
+                        proposal["timeline"]
+                    ),
                     normal_style,
                 ),
             ]
@@ -431,8 +662,8 @@ def build_proposal_pdf(
         details_table = Table(
             details,
             colWidths=[
-                40 * mm,
-                125 * mm,
+                42 * mm,
+                123 * mm,
             ],
         )
 
@@ -440,11 +671,17 @@ def build_proposal_pdf(
             TableStyle(
                 [
                     (
+                        "BACKGROUND",
+                        (0, 0),
+                        (-1, -1),
+                        LIGHT,
+                    ),
+                    (
                         "LINEBELOW",
                         (0, 0),
                         (-1, -1),
                         0.4,
-                        colors.HexColor("#E0E3E7"),
+                        BORDER,
                     ),
                     (
                         "VALIGN",
@@ -456,25 +693,25 @@ def build_proposal_pdf(
                         "LEFTPADDING",
                         (0, 0),
                         (-1, -1),
-                        6,
+                        9,
                     ),
                     (
                         "RIGHTPADDING",
                         (0, 0),
                         (-1, -1),
-                        6,
+                        9,
                     ),
                     (
                         "TOPPADDING",
                         (0, 0),
                         (-1, -1),
-                        7,
+                        8,
                     ),
                     (
                         "BOTTOMPADDING",
                         (0, 0),
                         (-1, -1),
-                        7,
+                        8,
                     ),
                 ]
             )
@@ -483,36 +720,89 @@ def build_proposal_pdf(
         story.append(details_table)
 
     # =====================================================
-    # FOOTER CONTENT
+    # CLOSING
     # =====================================================
 
-    story.append(Spacer(1, 22))
-
     story.append(
-        Paragraph(
-            "Thank you for considering this proposal.",
-            normal_style,
+        Spacer(
+            1,
+            20,
         )
     )
 
-    story.append(Spacer(1, 20))
-
-    generated = datetime.now().strftime(
-        "%B %d, %Y"
+    closing = Table(
+        [
+            [
+                Paragraph(
+                    "<b>Thank you for considering this proposal.</b>"
+                    "<br/>"
+                    "<font color='#6B7280'>"
+                    "We look forward to working with you."
+                    "</font>",
+                    normal_style,
+                )
+            ]
+        ],
+        colWidths=[
+            165 * mm
+        ],
     )
 
-    story.append(
-        Paragraph(
-            f"Generated by ClientFlow AI • {generated}",
-            small_style,
+    closing.setStyle(
+        TableStyle(
+            [
+                (
+                    "BACKGROUND",
+                    (0, 0),
+                    (-1, -1),
+                    LIGHT,
+                ),
+                (
+                    "BOX",
+                    (0, 0),
+                    (-1, -1),
+                    0.6,
+                    BORDER,
+                ),
+                (
+                    "LEFTPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    11,
+                ),
+                (
+                    "RIGHTPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    11,
+                ),
+                (
+                    "TOPPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    10,
+                ),
+                (
+                    "BOTTOMPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    10,
+                ),
+            ]
         )
     )
+
+    story.append(closing)
 
     # =====================================================
     # BUILD
     # =====================================================
 
-    document.build(story)
+    document.build(
+        story,
+        onFirstPage=draw_footer,
+        onLaterPages=draw_footer,
+    )
 
     buffer.seek(0)
 
