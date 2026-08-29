@@ -3,6 +3,7 @@ import streamlit as st
 from modules.database import init_db, get_dashboard_stats
 from modules.clients import render_clients_page
 from modules.projects import render_projects_page
+from modules.tasks import render_tasks_page
 
 
 # =========================================================
@@ -190,18 +191,15 @@ if page == "📊 Dashboard":
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-
         st.markdown(
             f"""
             <div class="metric-card">
                 <div class="metric-label">
                     Total Clients
                 </div>
-
                 <div class="metric-value">
                     {stats["clients"]}
                 </div>
-
                 <div class="metric-description">
                     All clients in your workspace
                 </div>
@@ -211,18 +209,15 @@ if page == "📊 Dashboard":
         )
 
     with col2:
-
         st.markdown(
             f"""
             <div class="metric-card">
                 <div class="metric-label">
                     Active Projects
                 </div>
-
                 <div class="metric-value">
                     {stats["projects"]}
                 </div>
-
                 <div class="metric-description">
                     Projects currently active
                 </div>
@@ -232,18 +227,15 @@ if page == "📊 Dashboard":
         )
 
     with col3:
-
         st.markdown(
             f"""
             <div class="metric-card">
                 <div class="metric-label">
                     Pending Tasks
                 </div>
-
                 <div class="metric-value">
                     {stats["tasks"]}
                 </div>
-
                 <div class="metric-description">
                     Tasks waiting for completion
                 </div>
@@ -253,18 +245,15 @@ if page == "📊 Dashboard":
         )
 
     with col4:
-
         st.markdown(
             f"""
             <div class="metric-card">
                 <div class="metric-label">
                     Outstanding
                 </div>
-
                 <div class="metric-value">
                     ${stats["outstanding"]:,.0f}
                 </div>
-
                 <div class="metric-description">
                     Unpaid invoice balance
                 </div>
@@ -280,9 +269,7 @@ if page == "📊 Dashboard":
         unsafe_allow_html=True,
     )
 
-    left, right = st.columns(
-        [1.5, 1]
-    )
+    left, right = st.columns([1.5, 1])
 
     with left:
 
@@ -337,7 +324,6 @@ if page == "📊 Dashboard":
             "＋ Add Client",
             use_container_width=True,
         ):
-
             st.info(
                 "Open **👥 Clients** from the sidebar."
             )
@@ -346,16 +332,22 @@ if page == "📊 Dashboard":
             "＋ Create Project",
             use_container_width=True,
         ):
-
             st.info(
                 "Open **📁 Projects** from the sidebar."
+            )
+
+        if st.button(
+            "＋ Create Task",
+            use_container_width=True,
+        ):
+            st.info(
+                "Open **✅ Tasks** from the sidebar."
             )
 
         if st.button(
             "＋ Create Proposal",
             use_container_width=True,
         ):
-
             st.info(
                 "Proposal Builder will be added soon."
             )
@@ -364,7 +356,6 @@ if page == "📊 Dashboard":
             "＋ Create Invoice",
             use_container_width=True,
         ):
-
             st.info(
                 "Invoice Generator will be added soon."
             )
@@ -415,18 +406,7 @@ elif page == "📁 Projects":
 
 elif page == "✅ Tasks":
 
-    st.title("Tasks")
-
-    st.markdown(
-        '<div class="subtitle">'
-        "Organize tasks across your projects."
-        "</div>",
-        unsafe_allow_html=True,
-    )
-
-    st.info(
-        "🚧 Tasks module will be connected to Projects next."
-    )
+    render_tasks_page()
 
 
 # =========================================================
@@ -437,15 +417,12 @@ elif page == "📄 Proposals":
 
     st.title("Proposals")
 
-    st.markdown(
-        '<div class="subtitle">'
+    st.write(
         "Create professional proposals for your clients."
-        "</div>",
-        unsafe_allow_html=True,
     )
 
     st.info(
-        "🚧 Proposal Builder is coming next."
+        "🚧 Proposal Builder is coming soon."
     )
 
 
@@ -457,11 +434,8 @@ elif page == "💰 Invoices":
 
     st.title("Invoices")
 
-    st.markdown(
-        '<div class="subtitle">'
+    st.write(
         "Create invoices and manage outstanding payments."
-        "</div>",
-        unsafe_allow_html=True,
     )
 
     st.info(
@@ -477,11 +451,8 @@ elif page == "🤖 AI Assistant":
 
     st.title("AI Assistant 🤖")
 
-    st.markdown(
-        '<div class="subtitle">'
+    st.write(
         "Your AI-powered client management assistant."
-        "</div>",
-        unsafe_allow_html=True,
     )
 
     st.info(
@@ -497,11 +468,8 @@ elif page == "📈 Reports":
 
     st.title("Reports")
 
-    st.markdown(
-        '<div class="subtitle">'
+    st.write(
         "Track business performance and client activity."
-        "</div>",
-        unsafe_allow_html=True,
     )
 
     st.info(
