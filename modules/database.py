@@ -33,6 +33,82 @@ def get_connection():
 
 
 # =========================================================
+# DATABASE MIGRATIONS
+# =========================================================
+
+def add_column_if_missing(
+    connection,
+    table_name,
+    column_name,
+    column_definition,
+):
+
+    columns = connection.execute(
+        f"PRAGMA table_info({table_name})"
+    ).fetchall()
+
+    existing_columns = {
+        column["name"]
+        for column in columns
+    }
+
+    if column_name not in existing_columns:
+
+        connection.execute(
+            f"""
+            ALTER TABLE {table_name}
+            ADD COLUMN {column_name}
+            {column_definition}
+            """
+        )
+
+
+def migrate_database(connection):
+
+    # -----------------------------------------------------
+    # TASKS MIGRATION
+    # -----------------------------------------------------
+
+    add_column_if_missing(
+        connection,
+        "tasks",
+        "description",
+        "TEXT",
+    )
+
+    add_column_if_missing(
+        connection,
+        "tasks",
+        "due_date",
+        "TEXT",
+    )
+
+    add_column_if_missing(
+        connection,
+        "tasks",
+        "assignee",
+        "TEXT",
+    )
+
+    # -----------------------------------------------------
+    # Keep old deadline data compatible with due_date
+    # -----------------------------------------------------
+
+    connection.execute(
+        """
+        UPDATE tasks
+        SET due_date = deadline
+        WHERE
+            (due_date IS NULL OR due_date = '')
+            AND deadline IS NOT NULL
+            AND deadline != ''
+        """
+    )
+
+    connection.commit()
+
+
+# =========================================================
 # INITIALIZE DATABASE
 # =========================================================
 
@@ -212,6 +288,12 @@ def init_db():
 
     connection.commit()
 
+    # -----------------------------------------------------
+    # Run migrations AFTER tables exist
+    # -----------------------------------------------------
+
+    migrate_database(connection)
+
     connection.close()
 
 
@@ -240,11 +322,15 @@ def get_dashboard_stats():
         """
     ).fetchone()[0]
 
+    # -----------------------------------------------------
+    # Pending tasks
+    # -----------------------------------------------------
+
     tasks = cursor.execute(
         """
         SELECT COUNT(*)
         FROM tasks
-        WHERE status != 'Completed'
+        WHERE status != 'Done'
         """
     ).fetchone()[0]
 
