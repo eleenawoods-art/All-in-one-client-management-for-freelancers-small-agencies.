@@ -3,30 +3,15 @@ import streamlit as st
 from modules.database import get_connection
 
 
-# =========================================================
-# OPTIONS
-# =========================================================
-
-PRIORITIES = [
-    "Low",
-    "Medium",
-    "High",
-    "Urgent",
-]
-
-PROJECT_STATUSES = [
-    "Active",
-    "On Hold",
-    "Completed",
-]
+PRIORITIES = ["Low", "Medium", "High", "Urgent"]
+PROJECT_STATUSES = ["Active", "On Hold", "Completed"]
 
 
 # =========================================================
-# GET CLIENTS
+# DATABASE HELPERS
 # =========================================================
 
 def get_clients():
-
     connection = get_connection()
 
     clients = connection.execute(
@@ -42,12 +27,7 @@ def get_clients():
     return clients
 
 
-# =========================================================
-# GET PROJECTS
-# =========================================================
-
 def get_projects(search="", status="All"):
-
     connection = get_connection()
 
     query = """
@@ -64,8 +44,7 @@ def get_projects(search="", status="All"):
     params = []
 
     if search.strip():
-
-        search_value = f"%{search.strip()}%"
+        value = f"%{search.strip()}%"
 
         query += """
             AND (
@@ -76,40 +55,23 @@ def get_projects(search="", status="All"):
             )
         """
 
-        params.extend(
-            [
-                search_value,
-                search_value,
-                search_value,
-                search_value,
-            ]
-        )
+        params.extend([value, value, value, value])
 
     if status != "All":
-
-        query += """
-            AND projects.status = ?
-        """
-
+        query += " AND projects.status = ?"
         params.append(status)
 
-    query += """
-        ORDER BY projects.created_at DESC
-    """
+    query += " ORDER BY projects.created_at DESC"
 
     projects = connection.execute(
         query,
-        params,
+        params
     ).fetchall()
 
     connection.close()
 
     return projects
 
-
-# =========================================================
-# ADD PROJECT
-# =========================================================
 
 def add_project(
     client_id,
@@ -120,12 +82,12 @@ def add_project(
     priority,
     status,
 ):
-
     connection = get_connection()
 
     connection.execute(
         """
-        INSERT INTO projects (
+        INSERT INTO projects
+        (
             client_id,
             name,
             description,
@@ -148,13 +110,8 @@ def add_project(
     )
 
     connection.commit()
-
     connection.close()
 
-
-# =========================================================
-# UPDATE PROJECT
-# =========================================================
 
 def update_project(
     project_id,
@@ -166,7 +123,6 @@ def update_project(
     priority,
     status,
 ):
-
     connection = get_connection()
 
     connection.execute(
@@ -195,36 +151,23 @@ def update_project(
     )
 
     connection.commit()
-
     connection.close()
 
 
-# =========================================================
-# DELETE PROJECT
-# =========================================================
-
 def delete_project(project_id):
-
     connection = get_connection()
 
     connection.execute(
-        """
-        DELETE FROM tasks
-        WHERE project_id = ?
-        """,
+        "DELETE FROM tasks WHERE project_id = ?",
         (project_id,),
     )
 
     connection.execute(
-        """
-        DELETE FROM projects
-        WHERE id = ?
-        """,
+        "DELETE FROM projects WHERE id = ?",
         (project_id,),
     )
 
     connection.commit()
-
     connection.close()
 
 
@@ -233,9 +176,7 @@ def delete_project(project_id):
 # =========================================================
 
 def client_label(client):
-
     if client["company"]:
-
         return f"{client['name']} — {client['company']}"
 
     return client["name"]
@@ -250,11 +191,9 @@ def render_add_project():
     clients = get_clients()
 
     if not clients:
-
         st.warning(
-            "You need to create a client before creating a project."
+            "No clients found. Please create a client first."
         )
-
         return
 
     client_options = {
@@ -262,57 +201,52 @@ def render_add_project():
         for client in clients
     }
 
-    with st.form(
-        "add_project_form",
-        clear_on_submit=True,
-    ):
+    st.subheader("Create New Project")
 
-        st.markdown("### Create New Project")
+    with st.form("create_project_form"):
 
-        col1, col2 = st.columns(2)
+        client_name = st.selectbox(
+            "Client *",
+            list(client_options.keys()),
+        )
+
+        project_name = st.text_input(
+            "Project Name *",
+            placeholder="e.g. Website Redesign",
+        )
+
+        description = st.text_area(
+            "Description",
+            placeholder="Describe the project...",
+        )
+
+        col1, col2, col3 = st.columns(3)
 
         with col1:
-
-            selected_client = st.selectbox(
-                "Client *",
-                list(client_options.keys()),
-            )
-
-            project_name = st.text_input(
-                "Project Name *",
-                placeholder="Website Redesign",
-            )
-
             deadline = st.date_input(
-                "Deadline",
+                "Deadline"
             )
 
+        with col2:
             priority = st.selectbox(
                 "Priority",
                 PRIORITIES,
                 index=1,
             )
 
-        with col2:
-
+        with col3:
             status = st.selectbox(
                 "Status",
                 PROJECT_STATUSES,
             )
 
-            progress = st.slider(
-                "Progress",
-                min_value=0,
-                max_value=100,
-                value=0,
-                step=5,
-            )
-
-            description = st.text_area(
-                "Description",
-                placeholder="Describe the project...",
-                height=150,
-            )
+        progress = st.slider(
+            "Progress",
+            0,
+            100,
+            0,
+            5,
+        )
 
         submitted = st.form_submit_button(
             "Create Project",
@@ -323,17 +257,13 @@ def render_add_project():
         if submitted:
 
             if not project_name.strip():
-
                 st.error(
                     "Project name is required."
                 )
-
                 return
 
             add_project(
-                client_id=client_options[
-                    selected_client
-                ],
+                client_id=client_options[client_name],
                 name=project_name.strip(),
                 description=description.strip(),
                 deadline=str(deadline),
@@ -342,9 +272,7 @@ def render_add_project():
                 status=status,
             )
 
-            st.session_state[
-                "show_add_project"
-            ] = False
+            st.session_state["show_add_project"] = False
 
             st.success(
                 f"Project '{project_name.strip()}' created successfully."
@@ -354,7 +282,7 @@ def render_add_project():
 
 
 # =========================================================
-# EDIT PROJECT FORM
+# EDIT PROJECT
 # =========================================================
 
 def render_edit_project(project):
@@ -376,90 +304,91 @@ def render_edit_project(project):
     )
 
     if current_client not in client_options:
-
         current_client = list(
             client_options.keys()
         )[0]
 
+    st.subheader("Edit Project")
+
     with st.form(
-        f"edit_project_{project['id']}"
+        f"edit_project_form_{project['id']}"
     ):
 
-        st.markdown("### Edit Project")
+        client_name = st.selectbox(
+            "Client",
+            list(client_options.keys()),
+            index=list(
+                client_options.keys()
+            ).index(current_client),
+        )
 
-        col1, col2 = st.columns(2)
+        project_name = st.text_input(
+            "Project Name",
+            value=project["name"] or "",
+        )
+
+        description = st.text_area(
+            "Description",
+            value=project["description"] or "",
+        )
+
+        col1, col2, col3 = st.columns(3)
 
         with col1:
 
-            selected_client = st.selectbox(
-                "Client",
-                list(client_options.keys()),
-                index=list(
-                    client_options.keys()
-                ).index(current_client),
-            )
-
-            project_name = st.text_input(
-                "Project Name",
-                value=project["name"] or "",
-            )
-
             deadline = st.date_input(
                 "Deadline",
-                value=(
-                    project["deadline"]
-                    if project["deadline"]
-                    else None
-                ),
+                value=project["deadline"],
             )
+
+        with col2:
 
             priority = st.selectbox(
                 "Priority",
                 PRIORITIES,
                 index=(
-                    PRIORITIES.index(
-                        project["priority"]
-                    )
+                    PRIORITIES.index(project["priority"])
                     if project["priority"] in PRIORITIES
                     else 1
                 ),
             )
 
-        with col2:
+        with col3:
 
             status = st.selectbox(
                 "Status",
                 PROJECT_STATUSES,
                 index=(
-                    PROJECT_STATUSES.index(
-                        project["status"]
-                    )
+                    PROJECT_STATUSES.index(project["status"])
                     if project["status"] in PROJECT_STATUSES
                     else 0
                 ),
             )
 
-            progress = st.slider(
-                "Progress",
-                min_value=0,
-                max_value=100,
-                value=int(
-                    project["progress"] or 0
-                ),
-                step=5,
-            )
-
-            description = st.text_area(
-                "Description",
-                value=project["description"] or "",
-                height=150,
-            )
-
-        save = st.form_submit_button(
-            "Save Changes",
-            type="primary",
-            use_container_width=True,
+        progress = st.slider(
+            "Progress",
+            0,
+            100,
+            int(project["progress"] or 0),
+            5,
         )
+
+        col_save, col_cancel = st.columns(2)
+
+        with col_save:
+
+            save = st.form_submit_button(
+                "Save Changes",
+                type="primary",
+                use_container_width=True,
+            )
+
+        with col_cancel:
+
+            cancel = st.form_submit_button(
+                "Cancel",
+                use_container_width=True,
+            )
 
         if save:
 
@@ -468,14 +397,11 @@ def render_edit_project(project):
                 st.error(
                     "Project name is required."
                 )
-
                 return
 
             update_project(
                 project_id=project["id"],
-                client_id=client_options[
-                    selected_client
-                ],
+                client_id=client_options[client_name],
                 name=project_name.strip(),
                 description=description.strip(),
                 deadline=str(deadline),
@@ -489,8 +415,13 @@ def render_edit_project(project):
                 None,
             )
 
-            st.success(
-                "Project updated successfully."
+            st.rerun()
+
+        if cancel:
+
+            st.session_state.pop(
+                "editing_project",
+                None,
             )
 
             st.rerun()
@@ -504,68 +435,52 @@ def render_projects_page():
 
     st.title("Projects")
 
-    st.markdown(
-        '<div class="subtitle">'
+    st.write(
         "Manage projects, deadlines, priorities, and progress."
-        "</div>",
-        unsafe_allow_html=True,
     )
 
-    # =====================================================
-    # TOP BAR
-    # =====================================================
+    st.divider()
 
-    search_col, button_col = st.columns(
-        [4, 1]
-    )
+    # -----------------------------------------------------
+    # NEW PROJECT BUTTON
+    # -----------------------------------------------------
 
-    with search_col:
+    if st.button(
+        "＋ New Project",
+        type="primary",
+    ):
 
-        search = st.text_input(
-            "Search projects",
-            placeholder="Search projects or clients...",
-            label_visibility="collapsed",
-        )
+        st.session_state["show_add_project"] = True
 
-    with button_col:
-
-        if st.button(
-            "＋ New Project",
-            type="primary",
-            use_container_width=True,
-        ):
-
-            st.session_state[
-                "show_add_project"
-            ] = not st.session_state.get(
-                "show_add_project",
-                False,
-            )
-
-            st.rerun()
-
-    # =====================================================
-    # ADD PROJECT
-    # =====================================================
+    # -----------------------------------------------------
+    # ADD FORM
+    # -----------------------------------------------------
 
     if st.session_state.get(
         "show_add_project",
         False,
     ):
 
-        with st.container(
-            border=True
-        ):
+        with st.container(border=True):
 
             render_add_project()
 
-    # =====================================================
-    # STATUS FILTER
-    # =====================================================
+        st.divider()
 
-    filter_col, spacer = st.columns(
-        [1, 4]
+    # -----------------------------------------------------
+    # SEARCH + FILTER
+    # -----------------------------------------------------
+
+    search_col, filter_col = st.columns(
+        [3, 1]
     )
+
+    with search_col:
+
+        search = st.text_input(
+            "Search projects",
+            placeholder="Search by project or client...",
+        )
 
     with filter_col:
 
@@ -574,16 +489,16 @@ def render_projects_page():
             ["All"] + PROJECT_STATUSES,
         )
 
-    # =====================================================
+    # -----------------------------------------------------
     # PROJECTS
-    # =====================================================
+    # -----------------------------------------------------
 
     projects = get_projects(
         search=search,
         status=status_filter,
     )
 
-    st.markdown(
+    st.write(
         f"**{len(projects)} project(s)**"
     )
 
@@ -591,31 +506,29 @@ def render_projects_page():
 
         st.info(
             "No projects found. Click "
-            "**＋ New Project** to create your first project."
+            "**＋ New Project** above to create your first project."
         )
 
         return
 
-    # =====================================================
+    # -----------------------------------------------------
     # PROJECT CARDS
-    # =====================================================
+    # -----------------------------------------------------
 
     for project in projects:
 
         project_id = project["id"]
 
-        with st.container(
-            border=True
-        ):
+        with st.container(border=True):
 
-            info_col, status_col, action_col = st.columns(
-                [3.4, 1.4, 1]
+            col_info, col_status, col_actions = st.columns(
+                [3, 1.3, 1]
             )
 
-            with info_col:
+            with col_info:
 
-                st.markdown(
-                    f"### {project['name']}"
+                st.subheader(
+                    project["name"]
                 )
 
                 client_text = (
@@ -635,27 +548,27 @@ def render_projects_page():
 
                 if project["description"]:
 
-                    st.caption(
+                    st.write(
                         project["description"]
                     )
 
-            with status_col:
+            with col_status:
 
-                if project["status"] == "Completed":
+                if project["status"] == "Active":
 
                     st.success(
                         project["status"]
                     )
 
-                elif project["status"] == "On Hold":
+                elif project["status"] == "Completed":
 
-                    st.warning(
+                    st.info(
                         project["status"]
                     )
 
                 else:
 
-                    st.info(
+                    st.warning(
                         project["status"]
                     )
 
@@ -663,11 +576,11 @@ def render_projects_page():
                     f"Priority: {project['priority']}"
                 )
 
-            with action_col:
+            with col_actions:
 
                 if st.button(
                     "Edit",
-                    key=f"edit_project_{project_id}",
+                    key=f"edit_{project_id}",
                     use_container_width=True,
                 ):
 
@@ -675,16 +588,11 @@ def render_projects_page():
                         "editing_project"
                     ] = project_id
 
-                    st.session_state.pop(
-                        "deleting_project",
-                        None,
-                    )
-
                     st.rerun()
 
                 if st.button(
                     "Delete",
-                    key=f"delete_project_{project_id}",
+                    key=f"delete_{project_id}",
                     use_container_width=True,
                 ):
 
@@ -692,23 +600,18 @@ def render_projects_page():
                         "deleting_project"
                     ] = project_id
 
-                    st.session_state.pop(
-                        "editing_project",
-                        None,
-                    )
-
                     st.rerun()
 
-            # =================================================
+            # -------------------------------------------------
             # PROGRESS
-            # =================================================
+            # -------------------------------------------------
 
-            progress_value = int(
+            progress = int(
                 project["progress"] or 0
             )
 
             st.progress(
-                progress_value / 100
+                progress / 100
             )
 
             progress_col, deadline_col = st.columns(2)
@@ -716,20 +619,18 @@ def render_projects_page():
             with progress_col:
 
                 st.caption(
-                    f"Progress: {progress_value}%"
+                    f"Progress: {progress}%"
                 )
 
             with deadline_col:
 
-                if project["deadline"]:
+                st.caption(
+                    f"📅 Deadline: {project['deadline']}"
+                )
 
-                    st.caption(
-                        f"📅 Deadline: {project['deadline']}"
-                    )
-
-            # =================================================
+            # -------------------------------------------------
             # EDIT
-            # =================================================
+            # -------------------------------------------------
 
             if (
                 st.session_state.get(
@@ -744,9 +645,9 @@ def render_projects_page():
                     project
                 )
 
-            # =================================================
+            # -------------------------------------------------
             # DELETE
-            # =================================================
+            # -------------------------------------------------
 
             if (
                 st.session_state.get(
@@ -758,18 +659,18 @@ def render_projects_page():
                 st.divider()
 
                 st.warning(
-                    "Deleting this project will also "
-                    "delete all tasks belonging to it."
+                    "This will also delete tasks belonging "
+                    "to this project."
                 )
 
-                confirm_col, cancel_col = st.columns(2)
+                yes_col, no_col = st.columns(2)
 
-                with confirm_col:
+                with yes_col:
 
                     if st.button(
-                        "Yes, Delete Project",
+                        "Yes, Delete",
                         type="primary",
-                        key=f"confirm_project_{project_id}",
+                        key=f"yes_{project_id}",
                         use_container_width=True,
                     ):
 
@@ -782,17 +683,13 @@ def render_projects_page():
                             None,
                         )
 
-                        st.success(
-                            "Project deleted successfully."
-                        )
-
                         st.rerun()
 
-                with cancel_col:
+                with no_col:
 
                     if st.button(
                         "Cancel",
-                        key=f"cancel_project_{project_id}",
+                        key=f"no_{project_id}",
                         use_container_width=True,
                     ):
 
