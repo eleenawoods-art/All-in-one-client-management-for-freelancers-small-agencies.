@@ -1,6 +1,7 @@
 import streamlit as st
 
 from modules.database import get_connection
+from reports.proposal_pdf import build_proposal_pdf
 
 
 PROPOSAL_STATUSES = [
@@ -35,7 +36,10 @@ def get_clients():
 def client_label(client):
 
     if client["company"]:
-        return f"{client['name']} — {client['company']}"
+        return (
+            f"{client['name']} — "
+            f"{client['company']}"
+        )
 
     return client["name"]
 
@@ -44,7 +48,10 @@ def client_label(client):
 # PROPOSALS
 # =========================================================
 
-def get_proposals(search="", status="All"):
+def get_proposals(
+    search="",
+    status="All",
+):
 
     connection = get_connection()
 
@@ -105,7 +112,9 @@ def get_proposals(search="", status="All"):
     return proposals
 
 
-def get_proposal_items(proposal_id):
+def get_proposal_items(
+    proposal_id,
+):
 
     connection = get_connection()
 
@@ -125,7 +134,7 @@ def get_proposal_items(proposal_id):
 
 
 # =========================================================
-# CREATE PROPOSAL
+# CREATE
 # =========================================================
 
 def create_proposal(
@@ -192,10 +201,12 @@ def create_proposal(
 
 
 # =========================================================
-# DELETE PROPOSAL
+# DELETE
 # =========================================================
 
-def delete_proposal(proposal_id):
+def delete_proposal(
+    proposal_id,
+):
 
     connection = get_connection()
 
@@ -221,7 +232,7 @@ def delete_proposal(proposal_id):
 
 
 # =========================================================
-# ADD PROPOSAL FORM
+# ADD PROPOSAL
 # =========================================================
 
 def render_add_proposal():
@@ -231,7 +242,8 @@ def render_add_proposal():
     if not clients:
 
         st.warning(
-            "Please create a client before creating a proposal."
+            "Please create a client before "
+            "creating a proposal."
         )
 
         return
@@ -241,9 +253,13 @@ def render_add_proposal():
         for client in clients
     }
 
-    st.subheader("Create New Proposal")
+    st.subheader(
+        "Create New Proposal"
+    )
 
-    with st.form("create_proposal_form"):
+    with st.form(
+        "create_proposal_form"
+    ):
 
         client_name = st.selectbox(
             "Client *",
@@ -252,12 +268,17 @@ def render_add_proposal():
 
         title = st.text_input(
             "Proposal Title *",
-            placeholder="e.g. Website Redesign Proposal",
+            placeholder=(
+                "e.g. Website Redesign Proposal"
+            ),
         )
 
         description = st.text_area(
             "Project Description",
-            placeholder="Describe the work and expected outcome...",
+            placeholder=(
+                "Describe the work and "
+                "expected outcome..."
+            ),
         )
 
         col1, col2 = st.columns(2)
@@ -278,10 +299,15 @@ def render_add_proposal():
 
         payment_terms = st.text_input(
             "Payment Terms",
-            placeholder="e.g. 50% upfront, 50% on completion",
+            placeholder=(
+                "e.g. 50% upfront, "
+                "50% on completion"
+            ),
         )
 
-        st.markdown("### Services")
+        st.markdown(
+            "### Services"
+        )
 
         item_count = st.number_input(
             "Number of Services",
@@ -295,18 +321,25 @@ def render_add_proposal():
 
         total = 0.0
 
-        for index in range(int(item_count)):
+        for index in range(
+            int(item_count)
+        ):
 
-            col_service, col_price = st.columns(
-                [3, 1]
+            col_service, col_price = (
+                st.columns([3, 1])
             )
 
             with col_service:
 
                 service = st.text_input(
                     f"Service {index + 1}",
-                    key=f"proposal_service_{index}",
-                    placeholder="e.g. Website Design",
+                    key=(
+                        f"proposal_service_"
+                        f"{index}"
+                    ),
+                    placeholder=(
+                        "e.g. Website Design"
+                    ),
                 )
 
             with col_price:
@@ -316,14 +349,19 @@ def render_add_proposal():
                     min_value=0.0,
                     value=0.0,
                     step=50.0,
-                    key=f"proposal_price_{index}",
+                    key=(
+                        f"proposal_price_"
+                        f"{index}"
+                    ),
                 )
 
             if service.strip():
 
                 items.append(
                     {
-                        "service": service.strip(),
+                        "service": (
+                            service.strip()
+                        ),
                         "price": price,
                     }
                 )
@@ -363,9 +401,13 @@ def render_add_proposal():
                     client_name
                 ],
                 title=title.strip(),
-                description=description.strip(),
+                description=(
+                    description.strip()
+                ),
                 timeline=timeline.strip(),
-                payment_terms=payment_terms.strip(),
+                payment_terms=(
+                    payment_terms.strip()
+                ),
                 status=status,
                 items=items,
             )
@@ -382,7 +424,7 @@ def render_add_proposal():
 
 
 # =========================================================
-# PROPOSAL PAGE
+# PAGE
 # =========================================================
 
 def render_proposals_page():
@@ -390,13 +432,14 @@ def render_proposals_page():
     st.title("Proposals")
 
     st.write(
-        "Create professional proposals for your clients."
+        "Create professional proposals "
+        "for your clients."
     )
 
     st.divider()
 
     # -----------------------------------------------------
-    # NEW PROPOSAL
+    # NEW
     # -----------------------------------------------------
 
     if st.button(
@@ -417,25 +460,29 @@ def render_proposals_page():
         False,
     ):
 
-        with st.container(border=True):
+        with st.container(
+            border=True
+        ):
 
             render_add_proposal()
 
         st.divider()
 
     # -----------------------------------------------------
-    # SEARCH / FILTER
+    # SEARCH
     # -----------------------------------------------------
 
-    search_col, filter_col = st.columns(
-        [3, 1]
+    search_col, filter_col = (
+        st.columns([3, 1])
     )
 
     with search_col:
 
         search = st.text_input(
             "Search proposals",
-            placeholder="Search proposals or clients...",
+            placeholder=(
+                "Search proposals or clients..."
+            ),
         )
 
     with filter_col:
@@ -461,22 +508,25 @@ def render_proposals_page():
     if not proposals:
 
         st.info(
-            "No proposals found. Click **＋ New Proposal** "
-            "to create your first proposal."
+            "No proposals found. Click "
+            "**＋ New Proposal** to create "
+            "your first proposal."
         )
 
         return
 
     # -----------------------------------------------------
-    # PROPOSAL CARDS
+    # CARDS
     # -----------------------------------------------------
 
     for proposal in proposals:
 
-        with st.container(border=True):
+        with st.container(
+            border=True
+        ):
 
-            col_info, col_status, col_actions = st.columns(
-                [3, 1.2, 1]
+            col_info, col_status, col_actions = (
+                st.columns([3, 1.2, 1])
             )
 
             with col_info:
@@ -493,7 +543,8 @@ def render_proposals_page():
                 if proposal["client_company"]:
 
                     client_text += (
-                        f" • {proposal['client_company']}"
+                        f" • "
+                        f"{proposal['client_company']}"
                     )
 
                 st.caption(
@@ -536,7 +587,10 @@ def render_proposals_page():
 
                 if st.button(
                     "Delete",
-                    key=f"delete_proposal_{proposal['id']}",
+                    key=(
+                        f"delete_proposal_"
+                        f"{proposal['id']}"
+                    ),
                     use_container_width=True,
                 ):
 
@@ -547,23 +601,25 @@ def render_proposals_page():
                     st.rerun()
 
             # -------------------------------------------------
-            # ITEMS
+            # SERVICES
             # -------------------------------------------------
 
             items = get_proposal_items(
                 proposal["id"]
             )
 
+            total = 0.0
+
             if items:
 
-                st.markdown("**Services**")
-
-                total = 0.0
+                st.markdown(
+                    "**Services**"
+                )
 
                 for item in items:
 
-                    service_col, price_col = st.columns(
-                        [4, 1]
+                    service_col, price_col = (
+                        st.columns([4, 1])
                     )
 
                     with service_col:
@@ -574,21 +630,27 @@ def render_proposals_page():
 
                     with price_col:
 
-                        st.write(
-                            f"${item['price']:,.2f}"
+                        price = float(
+                            item["price"] or 0
                         )
 
-                    total += item["price"]
+                        st.write(
+                            f"${price:,.2f}"
+                        )
+
+                        total += price
 
                 st.divider()
 
-                total_col, amount_col = st.columns(
-                    [4, 1]
+                total_col, amount_col = (
+                    st.columns([4, 1])
                 )
 
                 with total_col:
 
-                    st.markdown("**Total**")
+                    st.markdown(
+                        "**Total**"
+                    )
 
                 with amount_col:
 
@@ -597,17 +659,22 @@ def render_proposals_page():
                     )
 
             # -------------------------------------------------
-            # EXTRA DETAILS
+            # DETAILS
             # -------------------------------------------------
 
-            detail_col1, detail_col2 = st.columns(2)
+            detail_col1, detail_col2 = (
+                st.columns(2)
+            )
 
             with detail_col1:
 
                 if proposal["timeline"]:
 
                     st.caption(
-                        f"⏱ Timeline: {proposal['timeline']}"
+                        "⏱ Timeline: "
+                        + str(
+                            proposal["timeline"]
+                        )
                     )
 
             with detail_col2:
@@ -615,5 +682,47 @@ def render_proposals_page():
                 if proposal["payment_terms"]:
 
                     st.caption(
-                        f"💳 Payment: {proposal['payment_terms']}"
+                        "💳 Payment: "
+                        + str(
+                            proposal[
+                                "payment_terms"
+                            ]
+                        )
                     )
+
+            # -------------------------------------------------
+            # PDF
+            # -------------------------------------------------
+
+            st.divider()
+
+            pdf_col, spacer = st.columns(
+                [1, 3]
+            )
+
+            with pdf_col:
+
+                pdf_data = build_proposal_pdf(
+                    proposal,
+                    items,
+                )
+
+                safe_title = (
+                    proposal["title"]
+                    .strip()
+                    .replace(" ", "_")
+                )
+
+                st.download_button(
+                    label="📄 Download PDF",
+                    data=pdf_data,
+                    file_name=(
+                        f"{safe_title}_Proposal.pdf"
+                    ),
+                    mime="application/pdf",
+                    key=(
+                        f"download_proposal_"
+                        f"{proposal['id']}"
+                    ),
+                    use_container_width=True,
+                )
