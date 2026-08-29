@@ -4,6 +4,7 @@ from modules.database import init_db, get_dashboard_stats
 from modules.clients import render_clients_page
 from modules.projects import render_projects_page
 from modules.tasks import render_tasks_page
+from modules.proposals import render_proposals_page
 
 
 # =========================================================
@@ -191,15 +192,18 @@ if page == "📊 Dashboard":
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
+
         st.markdown(
             f"""
             <div class="metric-card">
                 <div class="metric-label">
                     Total Clients
                 </div>
+
                 <div class="metric-value">
                     {stats["clients"]}
                 </div>
+
                 <div class="metric-description">
                     All clients in your workspace
                 </div>
@@ -209,15 +213,18 @@ if page == "📊 Dashboard":
         )
 
     with col2:
+
         st.markdown(
             f"""
             <div class="metric-card">
                 <div class="metric-label">
                     Active Projects
                 </div>
+
                 <div class="metric-value">
                     {stats["projects"]}
                 </div>
+
                 <div class="metric-description">
                     Projects currently active
                 </div>
@@ -227,15 +234,18 @@ if page == "📊 Dashboard":
         )
 
     with col3:
+
         st.markdown(
             f"""
             <div class="metric-card">
                 <div class="metric-label">
                     Pending Tasks
                 </div>
+
                 <div class="metric-value">
                     {stats["tasks"]}
                 </div>
+
                 <div class="metric-description">
                     Tasks waiting for completion
                 </div>
@@ -245,15 +255,18 @@ if page == "📊 Dashboard":
         )
 
     with col4:
+
         st.markdown(
             f"""
             <div class="metric-card">
                 <div class="metric-label">
                     Outstanding
                 </div>
+
                 <div class="metric-value">
                     ${stats["outstanding"]:,.0f}
                 </div>
+
                 <div class="metric-description">
                     Unpaid invoice balance
                 </div>
@@ -324,6 +337,7 @@ if page == "📊 Dashboard":
             "＋ Add Client",
             use_container_width=True,
         ):
+
             st.info(
                 "Open **👥 Clients** from the sidebar."
             )
@@ -332,6 +346,7 @@ if page == "📊 Dashboard":
             "＋ Create Project",
             use_container_width=True,
         ):
+
             st.info(
                 "Open **📁 Projects** from the sidebar."
             )
@@ -340,6 +355,7 @@ if page == "📊 Dashboard":
             "＋ Create Task",
             use_container_width=True,
         ):
+
             st.info(
                 "Open **✅ Tasks** from the sidebar."
             )
@@ -348,14 +364,16 @@ if page == "📊 Dashboard":
             "＋ Create Proposal",
             use_container_width=True,
         ):
+
             st.info(
-                "Proposal Builder will be added soon."
+                "Open **📄 Proposals** from the sidebar."
             )
 
         if st.button(
             "＋ Create Invoice",
             use_container_width=True,
         ):
+
             st.info(
                 "Invoice Generator will be added soon."
             )
@@ -378,7 +396,8 @@ if page == "📊 Dashboard":
 
         st.success(
             f"You currently have "
-            f"{stats['clients']} client(s) in your workspace."
+            f"{stats['clients']} client(s) "
+            "in your workspace."
         )
 
 
@@ -415,15 +434,7 @@ elif page == "✅ Tasks":
 
 elif page == "📄 Proposals":
 
-    st.title("Proposals")
-
-    st.write(
-        "Create professional proposals for your clients."
-    )
-
-    st.info(
-        "🚧 Proposal Builder is coming soon."
-    )
+    render_proposals_page()
 
 
 # =========================================================
@@ -456,7 +467,8 @@ elif page == "🤖 AI Assistant":
     )
 
     st.info(
-        "🚧 AI Assistant will be added after the core CRM workflows."
+        "🚧 AI Assistant will be added after the core "
+        "CRM workflows are complete."
     )
 
 
