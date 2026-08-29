@@ -112,6 +112,31 @@ def get_proposals(
     return proposals
 
 
+def get_proposal(
+    proposal_id,
+):
+
+    connection = get_connection()
+
+    proposal = connection.execute(
+        """
+        SELECT
+            proposals.*,
+            clients.name AS client_name,
+            clients.company AS client_company
+        FROM proposals
+        LEFT JOIN clients
+            ON proposals.client_id = clients.id
+        WHERE proposals.id = ?
+        """,
+        (proposal_id,),
+    ).fetchone()
+
+    connection.close()
+
+    return proposal
+
+
 def get_proposal_items(
     proposal_id,
 ):
@@ -196,8 +221,177 @@ def create_proposal(
         )
 
     connection.commit()
-
     connection.close()
+
+
+# =========================================================
+# UPDATE
+# =========================================================
+
+def update_proposal(
+    proposal_id,
+    client_id,
+    title,
+    description,
+    timeline,
+    payment_terms,
+    status,
+    items,
+):
+
+    connection = get_connection()
+
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        UPDATE proposals
+        SET
+            client_id = ?,
+            title = ?,
+            description = ?,
+            timeline = ?,
+            payment_terms = ?,
+            status = ?
+        WHERE id = ?
+        """,
+        (
+            client_id,
+            title,
+            description,
+            timeline,
+            payment_terms,
+            status,
+            proposal_id,
+        ),
+    )
+
+    cursor.execute(
+        """
+        DELETE FROM proposal_items
+        WHERE proposal_id = ?
+        """,
+        (proposal_id,),
+    )
+
+    for item in items:
+
+        cursor.execute(
+            """
+            INSERT INTO proposal_items
+            (
+                proposal_id,
+                service,
+                price
+            )
+            VALUES (?, ?, ?)
+            """,
+            (
+                proposal_id,
+                item["service"],
+                item["price"],
+            ),
+        )
+
+    connection.commit()
+    connection.close()
+
+
+# =========================================================
+# DUPLICATE
+# =========================================================
+
+def duplicate_proposal(
+    proposal_id,
+):
+
+    connection = get_connection()
+
+    cursor = connection.cursor()
+
+    proposal = cursor.execute(
+        """
+        SELECT
+            client_id,
+            title,
+            description,
+            timeline,
+            payment_terms,
+            status
+        FROM proposals
+        WHERE id = ?
+        """,
+        (proposal_id,),
+    ).fetchone()
+
+    if not proposal:
+
+        connection.close()
+        return None
+
+    new_title = (
+        f"{proposal['title']} "
+        "(Copy)"
+    )
+
+    cursor.execute(
+        """
+        INSERT INTO proposals
+        (
+            client_id,
+            title,
+            description,
+            timeline,
+            payment_terms,
+            status
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            proposal["client_id"],
+            new_title,
+            proposal["description"],
+            proposal["timeline"],
+            proposal["payment_terms"],
+            "Draft",
+        ),
+    )
+
+    new_proposal_id = cursor.lastrowid
+
+    items = cursor.execute(
+        """
+        SELECT service, price
+        FROM proposal_items
+        WHERE proposal_id = ?
+        ORDER BY id ASC
+        """,
+        (proposal_id,),
+    ).fetchall()
+
+    for item in items:
+
+        cursor.execute(
+            """
+            INSERT INTO proposal_items
+            (
+                proposal_id,
+                service,
+                price
+            )
+            VALUES (?, ?, ?)
+            """,
+            (
+                new_proposal_id,
+                item["service"],
+                item["price"],
+            ),
+        )
+
+    connection.commit()
+    connection.close()
+
+    return new_proposal_id
 
 
 # =========================================================
@@ -227,7 +421,6 @@ def delete_proposal(
     )
 
     connection.commit()
-
     connection.close()
 
 
@@ -305,9 +498,7 @@ def render_add_proposal():
             ),
         )
 
-        st.markdown(
-            "### Services"
-        )
+        st.markdown("### Services")
 
         item_count = st.number_input(
             "Number of Services",
@@ -359,9 +550,7 @@ def render_add_proposal():
 
                 items.append(
                     {
-                        "service": (
-                            service.strip()
-                        ),
+                        "service": service.strip(),
                         "price": price,
                     }
                 )
@@ -401,9 +590,7 @@ def render_add_proposal():
                     client_name
                 ],
                 title=title.strip(),
-                description=(
-                    description.strip()
-                ),
+                description=description.strip(),
                 timeline=timeline.strip(),
                 payment_terms=(
                     payment_terms.strip()
@@ -418,6 +605,281 @@ def render_add_proposal():
 
             st.success(
                 "Proposal created successfully."
+            )
+
+            st.rerun()
+
+
+# =========================================================
+# EDIT PROPOSAL
+# =========================================================
+
+def render_edit_proposal(
+    proposal_id,
+):
+
+    proposal = get_proposal(
+        proposal_id
+    )
+
+    if not proposal:
+
+        st.error(
+            "Proposal not found."
+        )
+
+        return
+
+    clients = get_clients()
+
+    if not clients:
+
+        st.warning(
+            "No clients available."
+        )
+
+        return
+
+    client_options = {
+        client_label(client): client["id"]
+        for client in clients
+    }
+
+    current_client_label = None
+
+    for label, client_id in client_options.items():
+
+        if client_id == proposal["client_id"]:
+
+            current_client_label = label
+            break
+
+    if current_client_label is None:
+
+        current_client_label = list(
+            client_options.keys()
+        )[0]
+
+    existing_items = get_proposal_items(
+        proposal_id
+    )
+
+    st.subheader(
+        "Edit Proposal"
+    )
+
+    with st.form(
+        f"edit_proposal_form_{proposal_id}"
+    ):
+
+        client_name = st.selectbox(
+            "Client *",
+            list(client_options.keys()),
+            index=list(
+                client_options.keys()
+            ).index(
+                current_client_label
+            ),
+        )
+
+        title = st.text_input(
+            "Proposal Title *",
+            value=proposal["title"] or "",
+        )
+
+        description = st.text_area(
+            "Project Description",
+            value=proposal["description"] or "",
+        )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+
+            timeline = st.text_input(
+                "Timeline",
+                value=proposal["timeline"] or "",
+            )
+
+        with col2:
+
+            current_status = (
+                proposal["status"]
+                if proposal["status"]
+                in PROPOSAL_STATUSES
+                else "Draft"
+            )
+
+            status = st.selectbox(
+                "Status",
+                PROPOSAL_STATUSES,
+                index=PROPOSAL_STATUSES.index(
+                    current_status
+                ),
+            )
+
+        payment_terms = st.text_input(
+            "Payment Terms",
+            value=(
+                proposal["payment_terms"]
+                or ""
+            ),
+        )
+
+        st.markdown("### Services")
+
+        default_count = max(
+            1,
+            min(
+                10,
+                len(existing_items),
+            ),
+        )
+
+        item_count = st.number_input(
+            "Number of Services",
+            min_value=1,
+            max_value=10,
+            value=default_count,
+            step=1,
+            key=f"edit_item_count_{proposal_id}",
+        )
+
+        items = []
+
+        total = 0.0
+
+        for index in range(
+            int(item_count)
+        ):
+
+            existing = (
+                existing_items[index]
+                if index < len(existing_items)
+                else None
+            )
+
+            default_service = (
+                existing["service"]
+                if existing
+                else ""
+            )
+
+            default_price = float(
+                existing["price"]
+                if existing
+                else 0
+            )
+
+            col_service, col_price = (
+                st.columns([3, 1])
+            )
+
+            with col_service:
+
+                service = st.text_input(
+                    f"Service {index + 1}",
+                    value=default_service,
+                    key=(
+                        f"edit_service_"
+                        f"{proposal_id}_"
+                        f"{index}"
+                    ),
+                )
+
+            with col_price:
+
+                price = st.number_input(
+                    f"Price {index + 1}",
+                    min_value=0.0,
+                    value=default_price,
+                    step=50.0,
+                    key=(
+                        f"edit_price_"
+                        f"{proposal_id}_"
+                        f"{index}"
+                    ),
+                )
+
+            if service.strip():
+
+                items.append(
+                    {
+                        "service": service.strip(),
+                        "price": price,
+                    }
+                )
+
+                total += price
+
+        st.markdown(
+            f"### Total: ${total:,.2f}"
+        )
+
+        col_save, col_cancel = st.columns(2)
+
+        with col_save:
+
+            submitted = st.form_submit_button(
+                "💾 Save Changes",
+                type="primary",
+                use_container_width=True,
+            )
+
+        with col_cancel:
+
+            cancelled = st.form_submit_button(
+                "Cancel",
+                use_container_width=True,
+            )
+
+        if cancelled:
+
+            st.session_state[
+                "editing_proposal"
+            ] = None
+
+            st.rerun()
+
+        if submitted:
+
+            if not title.strip():
+
+                st.error(
+                    "Proposal title is required."
+                )
+
+                return
+
+            if not items:
+
+                st.error(
+                    "Add at least one service."
+                )
+
+                return
+
+            update_proposal(
+                proposal_id=proposal_id,
+                client_id=client_options[
+                    client_name
+                ],
+                title=title.strip(),
+                description=description.strip(),
+                timeline=timeline.strip(),
+                payment_terms=(
+                    payment_terms.strip()
+                ),
+                status=status,
+                items=items,
+            )
+
+            st.session_state[
+                "editing_proposal"
+            ] = None
+
+            st.success(
+                "Proposal updated successfully."
             )
 
             st.rerun()
@@ -439,34 +901,56 @@ def render_proposals_page():
     st.divider()
 
     # -----------------------------------------------------
-    # NEW
+    # EDIT MODE
     # -----------------------------------------------------
 
-    if st.button(
-        "＋ New Proposal",
-        type="primary",
-    ):
+    editing_id = st.session_state.get(
+        "editing_proposal"
+    )
 
-        st.session_state[
-            "show_add_proposal"
-        ] = True
-
-    # -----------------------------------------------------
-    # FORM
-    # -----------------------------------------------------
-
-    if st.session_state.get(
-        "show_add_proposal",
-        False,
-    ):
+    if editing_id:
 
         with st.container(
             border=True
         ):
 
-            render_add_proposal()
+            render_edit_proposal(
+                editing_id
+            )
 
         st.divider()
+
+    else:
+
+        # -------------------------------------------------
+        # NEW
+        # -------------------------------------------------
+
+        if st.button(
+            "＋ New Proposal",
+            type="primary",
+        ):
+
+            st.session_state[
+                "show_add_proposal"
+            ] = True
+
+        # -------------------------------------------------
+        # FORM
+        # -------------------------------------------------
+
+        if st.session_state.get(
+            "show_add_proposal",
+            False,
+        ):
+
+            with st.container(
+                border=True
+            ):
+
+                render_add_proposal()
+
+            st.divider()
 
     # -----------------------------------------------------
     # SEARCH
@@ -526,8 +1010,12 @@ def render_proposals_page():
         ):
 
             col_info, col_status, col_actions = (
-                st.columns([3, 1.2, 1])
+                st.columns([3, 1.2, 1.4])
             )
+
+            # ---------------------------------------------
+            # INFO
+            # ---------------------------------------------
 
             with col_info:
 
@@ -557,6 +1045,10 @@ def render_proposals_page():
                         proposal["description"]
                     )
 
+            # ---------------------------------------------
+            # STATUS
+            # ---------------------------------------------
+
             with col_status:
 
                 if proposal["status"] == "Accepted":
@@ -583,26 +1075,122 @@ def render_proposals_page():
                         proposal["status"]
                     )
 
+            # ---------------------------------------------
+            # ACTIONS
+            # ---------------------------------------------
+
             with col_actions:
 
                 if st.button(
-                    "Delete",
+                    "✏️ Edit",
                     key=(
-                        f"delete_proposal_"
+                        f"edit_proposal_"
                         f"{proposal['id']}"
                     ),
                     use_container_width=True,
                 ):
 
-                    delete_proposal(
+                    st.session_state[
+                        "editing_proposal"
+                    ] = proposal["id"]
+
+                    st.rerun()
+
+                if st.button(
+                    "📋 Duplicate",
+                    key=(
+                        f"duplicate_proposal_"
+                        f"{proposal['id']}"
+                    ),
+                    use_container_width=True,
+                ):
+
+                    duplicate_proposal(
                         proposal["id"]
+                    )
+
+                    st.success(
+                        "Proposal duplicated."
                     )
 
                     st.rerun()
 
-            # -------------------------------------------------
+                delete_key = (
+                    f"confirm_delete_"
+                    f"{proposal['id']}"
+                )
+
+                if not st.session_state.get(
+                    delete_key,
+                    False,
+                ):
+
+                    if st.button(
+                        "🗑️ Delete",
+                        key=(
+                            f"delete_proposal_"
+                            f"{proposal['id']}"
+                        ),
+                        use_container_width=True,
+                    ):
+
+                        st.session_state[
+                            delete_key
+                        ] = True
+
+                        st.rerun()
+
+                else:
+
+                    st.warning(
+                        "Delete this proposal?"
+                    )
+
+                    confirm_col, cancel_col = (
+                        st.columns(2)
+                    )
+
+                    with confirm_col:
+
+                        if st.button(
+                            "Yes",
+                            key=(
+                                f"confirm_yes_"
+                                f"{proposal['id']}"
+                            ),
+                            use_container_width=True,
+                        ):
+
+                            delete_proposal(
+                                proposal["id"]
+                            )
+
+                            st.session_state[
+                                delete_key
+                            ] = False
+
+                            st.rerun()
+
+                    with cancel_col:
+
+                        if st.button(
+                            "No",
+                            key=(
+                                f"confirm_no_"
+                                f"{proposal['id']}"
+                            ),
+                            use_container_width=True,
+                        ):
+
+                            st.session_state[
+                                delete_key
+                            ] = False
+
+                            st.rerun()
+
+            # ---------------------------------------------
             # SERVICES
-            # -------------------------------------------------
+            # ---------------------------------------------
 
             items = get_proposal_items(
                 proposal["id"]
@@ -658,9 +1246,9 @@ def render_proposals_page():
                         f"**${total:,.2f}**"
                     )
 
-            # -------------------------------------------------
+            # ---------------------------------------------
             # DETAILS
-            # -------------------------------------------------
+            # ---------------------------------------------
 
             detail_col1, detail_col2 = (
                 st.columns(2)
@@ -684,20 +1272,18 @@ def render_proposals_page():
                     st.caption(
                         "💳 Payment: "
                         + str(
-                            proposal[
-                                "payment_terms"
-                            ]
+                            proposal["payment_terms"]
                         )
                     )
 
-            # -------------------------------------------------
+            # ---------------------------------------------
             # PDF
-            # -------------------------------------------------
+            # ---------------------------------------------
 
             st.divider()
 
             pdf_col, spacer = st.columns(
-                [1, 3]
+                [1.2, 3]
             )
 
             with pdf_col:
