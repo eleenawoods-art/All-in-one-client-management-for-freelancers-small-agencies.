@@ -2,6 +2,7 @@ import streamlit as st
 
 from modules.database import init_db, get_dashboard_stats
 from modules.clients import render_clients_page
+from modules.projects import render_projects_page
 
 
 # =========================================================
@@ -42,16 +43,23 @@ st.markdown(
     }
 
     .brand {
-        font-size: 1.4rem;
+        font-size: 1.45rem;
         font-weight: 800;
-        letter-spacing: -0.03em;
+        letter-spacing: -0.04em;
+        margin-bottom: 0.3rem;
+    }
+
+    .brand-subtitle {
+        font-size: 0.78rem;
+        color: #888;
         margin-bottom: 1.5rem;
     }
 
     .subtitle {
         color: #777;
-        margin-top: -0.8rem;
+        margin-top: -0.7rem;
         margin-bottom: 2rem;
+        font-size: 1rem;
     }
 
     .metric-card {
@@ -59,7 +67,7 @@ st.markdown(
         border: 1px solid rgba(128,128,128,.18);
         border-radius: 16px;
         background: rgba(128,128,128,.035);
-        min-height: 115px;
+        min-height: 120px;
     }
 
     .metric-label {
@@ -68,8 +76,14 @@ st.markdown(
     }
 
     .metric-value {
-        font-size: 1.8rem;
+        font-size: 1.85rem;
         font-weight: 750;
+        margin-top: .35rem;
+    }
+
+    .metric-description {
+        font-size: .75rem;
+        color: #888;
         margin-top: .3rem;
     }
 
@@ -77,6 +91,14 @@ st.markdown(
         font-size: 1.05rem;
         font-weight: 700;
         margin: 1.7rem 0 .8rem;
+    }
+
+    .dashboard-card {
+        padding: 1.35rem;
+        border: 1px solid rgba(128,128,128,.18);
+        border-radius: 16px;
+        min-height: 180px;
+        background: rgba(128,128,128,.025);
     }
 
     </style>
@@ -96,7 +118,14 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    st.caption("CLIENT MANAGEMENT")
+    st.markdown(
+        '<div class="brand-subtitle">'
+        "Client Management Workspace"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+    st.caption("NAVIGATION")
 
     page = st.radio(
         "Navigation",
@@ -117,9 +146,18 @@ with st.sidebar:
 
     st.caption("WORKSPACE")
 
-    st.caption(
-        "All-in-one client management for "
-        "freelancers & small agencies."
+    st.markdown(
+        """
+        <div style="
+            font-size:0.82rem;
+            line-height:1.5;
+            color:#777;
+        ">
+        All-in-one client management for
+        freelancers & small agencies.
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     st.divider()
@@ -128,7 +166,7 @@ with st.sidebar:
 
 
 # =========================================================
-# DASHBOARD DATA
+# DASHBOARD STATS
 # =========================================================
 
 stats = get_dashboard_stats()
@@ -149,10 +187,6 @@ if page == "📊 Dashboard":
         unsafe_allow_html=True,
     )
 
-    # -----------------------------------------------------
-    # METRICS
-    # -----------------------------------------------------
-
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
@@ -166,6 +200,10 @@ if page == "📊 Dashboard":
 
                 <div class="metric-value">
                     {stats["clients"]}
+                </div>
+
+                <div class="metric-description">
+                    All clients in your workspace
                 </div>
             </div>
             """,
@@ -184,6 +222,10 @@ if page == "📊 Dashboard":
                 <div class="metric-value">
                     {stats["projects"]}
                 </div>
+
+                <div class="metric-description">
+                    Projects currently active
+                </div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -200,6 +242,10 @@ if page == "📊 Dashboard":
 
                 <div class="metric-value">
                     {stats["tasks"]}
+                </div>
+
+                <div class="metric-description">
+                    Tasks waiting for completion
                 </div>
             </div>
             """,
@@ -218,14 +264,14 @@ if page == "📊 Dashboard":
                 <div class="metric-value">
                     ${stats["outstanding"]:,.0f}
                 </div>
+
+                <div class="metric-description">
+                    Unpaid invoice balance
+                </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
-
-    # -----------------------------------------------------
-    # OVERVIEW
-    # -----------------------------------------------------
 
     st.markdown(
         '<div class="section-title">'
@@ -234,38 +280,66 @@ if page == "📊 Dashboard":
         unsafe_allow_html=True,
     )
 
-    left, right = st.columns([1.5, 1])
+    left, right = st.columns(
+        [1.5, 1]
+    )
 
     with left:
 
-        st.markdown("### Revenue Overview")
+        st.markdown(
+            """
+            <div class="dashboard-card">
 
-        st.info(
-            "Revenue analytics will appear here "
-            "as invoices and payments are added."
+                <h3>Revenue Overview</h3>
+
+                <p style="color:#777;">
+                    Revenue analytics will appear here
+                    as invoices and payments are added.
+                </p>
+
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
 
-        st.markdown("### Recent Activity")
+        st.markdown("<br>", unsafe_allow_html=True)
 
-        st.caption(
-            "No activity yet. Add your first client "
-            "or project to get started."
+        st.markdown(
+            """
+            <div class="dashboard-card">
+
+                <h3>Recent Activity</h3>
+
+                <p style="color:#777;">
+                    Your latest client and project activity
+                    will appear here.
+                </p>
+
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
 
     with right:
 
-        st.markdown("### Quick Actions")
+        st.markdown(
+            """
+            <div class="dashboard-card">
+
+                <h3>Quick Actions</h3>
+
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
         if st.button(
             "＋ Add Client",
             use_container_width=True,
         ):
 
-            st.session_state["quick_action"] = "Clients"
-
             st.info(
-                "Open **Clients** from the sidebar "
-                "to add your first client."
+                "Open **👥 Clients** from the sidebar."
             )
 
         if st.button(
@@ -273,10 +347,8 @@ if page == "📊 Dashboard":
             use_container_width=True,
         ):
 
-            st.session_state["quick_action"] = "Projects"
-
             st.info(
-                "Projects module will be added next."
+                "Open **📁 Projects** from the sidebar."
             )
 
         if st.button(
@@ -284,10 +356,8 @@ if page == "📊 Dashboard":
             use_container_width=True,
         ):
 
-            st.session_state["quick_action"] = "Proposals"
-
             st.info(
-                "Proposals module will be added later."
+                "Proposal Builder will be added soon."
             )
 
         if st.button(
@@ -295,15 +365,9 @@ if page == "📊 Dashboard":
             use_container_width=True,
         ):
 
-            st.session_state["quick_action"] = "Invoices"
-
             st.info(
-                "Invoices module will be added later."
+                "Invoice Generator will be added soon."
             )
-
-    # -----------------------------------------------------
-    # GETTING STARTED
-    # -----------------------------------------------------
 
     st.markdown(
         '<div class="section-title">'
@@ -312,10 +376,19 @@ if page == "📊 Dashboard":
         unsafe_allow_html=True,
     )
 
-    st.success(
-        "Your ClientFlow AI workspace is ready. "
-        "Add your first client to begin."
-    )
+    if stats["clients"] == 0:
+
+        st.info(
+            "👋 Welcome to ClientFlow AI! "
+            "Start by adding your first client."
+        )
+
+    else:
+
+        st.success(
+            f"You currently have "
+            f"{stats['clients']} client(s) in your workspace."
+        )
 
 
 # =========================================================
@@ -328,56 +401,109 @@ elif page == "👥 Clients":
 
 
 # =========================================================
-# OTHER MODULES
+# PROJECTS
 # =========================================================
 
-else:
+elif page == "📁 Projects":
 
-    module_info = {
+    render_projects_page()
 
-        "📁 Projects": (
-            "Projects",
-            "Track projects, deadlines, priorities, and progress.",
-        ),
 
-        "✅ Tasks": (
-            "Tasks",
-            "Organize work across your projects.",
-        ),
+# =========================================================
+# TASKS
+# =========================================================
 
-        "📄 Proposals": (
-            "Proposals",
-            "Create professional proposals and export them as PDF.",
-        ),
+elif page == "✅ Tasks":
 
-        "💰 Invoices": (
-            "Invoices",
-            "Create invoices, manage due dates, and export PDF invoices.",
-        ),
-
-        "🤖 AI Assistant": (
-            "AI Assistant",
-            "Generate proposals, emails, follow-ups, "
-            "project descriptions, and meeting summaries.",
-        ),
-
-        "📈 Reports": (
-            "Reports",
-            "Track revenue, clients, projects, "
-            "and outstanding invoices.",
-        ),
-    }
-
-    title, description = module_info[page]
-
-    st.title(title)
+    st.title("Tasks")
 
     st.markdown(
-        f'<div class="subtitle">{description}</div>',
+        '<div class="subtitle">'
+        "Organize tasks across your projects."
+        "</div>",
         unsafe_allow_html=True,
     )
 
     st.info(
-        "This module will be added in the next "
-        "development phase."
+        "🚧 Tasks module will be connected to Projects next."
+    )
+
+
+# =========================================================
+# PROPOSALS
+# =========================================================
+
+elif page == "📄 Proposals":
+
+    st.title("Proposals")
+
+    st.markdown(
+        '<div class="subtitle">'
+        "Create professional proposals for your clients."
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+    st.info(
+        "🚧 Proposal Builder is coming next."
+    )
+
+
+# =========================================================
+# INVOICES
+# =========================================================
+
+elif page == "💰 Invoices":
+
+    st.title("Invoices")
+
+    st.markdown(
+        '<div class="subtitle">'
+        "Create invoices and manage outstanding payments."
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+    st.info(
+        "🚧 Invoice Generator is coming soon."
+    )
+
+
+# =========================================================
+# AI ASSISTANT
+# =========================================================
+
+elif page == "🤖 AI Assistant":
+
+    st.title("AI Assistant 🤖")
+
+    st.markdown(
+        '<div class="subtitle">'
+        "Your AI-powered client management assistant."
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+    st.info(
+        "🚧 AI Assistant will be added after the core CRM workflows."
+    )
+
+
+# =========================================================
+# REPORTS
+# =========================================================
+
+elif page == "📈 Reports":
+
+    st.title("Reports")
+
+    st.markdown(
+        '<div class="subtitle">'
+        "Track business performance and client activity."
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+    st.info(
+        "🚧 Reports & analytics are coming soon."
     )
