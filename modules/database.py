@@ -25,9 +25,14 @@ def get_connection():
     connection = sqlite3.connect(
         DB_PATH,
         check_same_thread=False,
+        timeout=30,
     )
 
     connection.row_factory = sqlite3.Row
+
+    # Better reliability when multiple Streamlit sessions access SQLite.
+    connection.execute("PRAGMA foreign_keys = ON")
+    connection.execute("PRAGMA busy_timeout = 30000")
 
     return connection
 
@@ -167,6 +172,7 @@ def init_db():
 
             FOREIGN KEY (client_id)
                 REFERENCES clients(id)
+                ON DELETE SET NULL
         );
 
 
@@ -189,6 +195,7 @@ def init_db():
 
             FOREIGN KEY (project_id)
                 REFERENCES projects(id)
+                ON DELETE SET NULL
         );
 
 
@@ -213,6 +220,7 @@ def init_db():
 
             FOREIGN KEY (client_id)
                 REFERENCES clients(id)
+                ON DELETE SET NULL
         );
 
 
@@ -228,6 +236,7 @@ def init_db():
 
             FOREIGN KEY (proposal_id)
                 REFERENCES proposals(id)
+                ON DELETE CASCADE
         );
 
 
@@ -256,6 +265,7 @@ def init_db():
 
             FOREIGN KEY (client_id)
                 REFERENCES clients(id)
+                ON DELETE SET NULL
         );
 
 
@@ -273,6 +283,7 @@ def init_db():
 
             FOREIGN KEY (invoice_id)
                 REFERENCES invoices(id)
+                ON DELETE CASCADE
         );
 
 
@@ -294,6 +305,30 @@ def init_db():
 
     migrate_database(connection)
 
+    # Helpful indexes for common ClientFlow lookups.
+    connection.executescript(
+        """
+        CREATE INDEX IF NOT EXISTS idx_projects_client_id
+            ON projects(client_id);
+
+        CREATE INDEX IF NOT EXISTS idx_tasks_project_id
+            ON tasks(project_id);
+
+        CREATE INDEX IF NOT EXISTS idx_proposals_client_id
+            ON proposals(client_id);
+
+        CREATE INDEX IF NOT EXISTS idx_proposal_items_proposal_id
+            ON proposal_items(proposal_id);
+
+        CREATE INDEX IF NOT EXISTS idx_invoices_client_id
+            ON invoices(client_id);
+
+        CREATE INDEX IF NOT EXISTS idx_invoice_items_invoice_id
+            ON invoice_items(invoice_id);
+        """
+    )
+
+    connection.commit()
     connection.close()
 
 
