@@ -424,6 +424,29 @@ def delete_proposal(
     connection.close()
 
 
+
+# =========================================================
+# STATUS UPDATE
+# =========================================================
+
+def update_proposal_status(proposal_id, status):
+    """Update only the proposal status."""
+    if status not in PROPOSAL_STATUSES:
+        return
+
+    connection = get_connection()
+    connection.execute(
+        """
+        UPDATE proposals
+        SET status = ?
+        WHERE id = ?
+        """,
+        (status, proposal_id),
+    )
+    connection.commit()
+    connection.close()
+
+
 # =========================================================
 # ADD PROPOSAL
 # =========================================================
@@ -1083,109 +1106,106 @@ def render_proposals_page():
 
                 if st.button(
                     "✏️ Edit",
-                    key=(
-                        f"edit_proposal_"
-                        f"{proposal['id']}"
-                    ),
+                    key=f"edit_proposal_{proposal['id']}",
                     use_container_width=True,
                 ):
-
-                    st.session_state[
-                        "editing_proposal"
-                    ] = proposal["id"]
-
+                    st.session_state["editing_proposal"] = proposal["id"]
                     st.rerun()
+
+                view_key = f"view_proposal_{proposal['id']}"
+                if st.button(
+                    "👁️ View",
+                    key=view_key,
+                    use_container_width=True,
+                ):
+                    st.session_state["viewing_proposal"] = (
+                        None
+                        if st.session_state.get("viewing_proposal") == proposal["id"]
+                        else proposal["id"]
+                    )
+                    st.rerun()
+
+                # Quick status workflow
+                status_options = {
+                    "Draft": ["Sent"],
+                    "Sent": ["Accepted", "Rejected", "Draft"],
+                    "Accepted": ["Sent"],
+                    "Rejected": ["Draft", "Sent"],
+                }
+                current_status = proposal["status"] or "Draft"
+                next_statuses = status_options.get(current_status, PROPOSAL_STATUSES)
+
+                if next_statuses:
+                    status_label = (
+                        "📤 Mark as Sent"
+                        if current_status == "Draft"
+                        else "🔄 Change Status"
+                    )
+
+                    selected_status = st.selectbox(
+                        status_label,
+                        next_statuses,
+                        key=f"status_select_{proposal['id']}",
+                        label_visibility="collapsed",
+                    )
+
+                    if st.button(
+                        f"Set: {selected_status}",
+                        key=f"set_status_{proposal['id']}",
+                        use_container_width=True,
+                    ):
+                        update_proposal_status(
+                            proposal["id"],
+                            selected_status,
+                        )
+                        st.success(
+                            f"Proposal marked as {selected_status}."
+                        )
+                        st.rerun()
 
                 if st.button(
                     "📋 Duplicate",
-                    key=(
-                        f"duplicate_proposal_"
-                        f"{proposal['id']}"
-                    ),
+                    key=f"duplicate_proposal_{proposal['id']}",
                     use_container_width=True,
                 ):
-
-                    duplicate_proposal(
-                        proposal["id"]
-                    )
-
-                    st.success(
-                        "Proposal duplicated."
-                    )
-
+                    duplicate_proposal(proposal["id"])
+                    st.success("Proposal duplicated.")
                     st.rerun()
 
-                delete_key = (
-                    f"confirm_delete_"
-                    f"{proposal['id']}"
-                )
+                delete_key = f"confirm_delete_{proposal['id']}"
 
-                if not st.session_state.get(
-                    delete_key,
-                    False,
-                ):
-
+                if not st.session_state.get(delete_key, False):
                     if st.button(
                         "🗑️ Delete",
-                        key=(
-                            f"delete_proposal_"
-                            f"{proposal['id']}"
-                        ),
+                        key=f"delete_proposal_{proposal['id']}",
                         use_container_width=True,
                     ):
-
-                        st.session_state[
-                            delete_key
-                        ] = True
-
+                        st.session_state[delete_key] = True
                         st.rerun()
-
                 else:
+                    st.warning("Delete this proposal?")
 
-                    st.warning(
-                        "Delete this proposal?"
-                    )
-
-                    confirm_col, cancel_col = (
-                        st.columns(2)
-                    )
+                    confirm_col, cancel_col = st.columns(2)
 
                     with confirm_col:
-
                         if st.button(
                             "Yes",
-                            key=(
-                                f"confirm_yes_"
-                                f"{proposal['id']}"
-                            ),
+                            key=f"confirm_yes_{proposal['id']}",
                             use_container_width=True,
                         ):
-
-                            delete_proposal(
-                                proposal["id"]
-                            )
-
-                            st.session_state[
-                                delete_key
-                            ] = False
-
+                            delete_proposal(proposal["id"])
+                            st.session_state[delete_key] = False
+                            if st.session_state.get("viewing_proposal") == proposal["id"]:
+                                st.session_state["viewing_proposal"] = None
                             st.rerun()
 
                     with cancel_col:
-
                         if st.button(
                             "No",
-                            key=(
-                                f"confirm_no_"
-                                f"{proposal['id']}"
-                            ),
+                            key=f"confirm_no_{proposal['id']}",
                             use_container_width=True,
                         ):
-
-                            st.session_state[
-                                delete_key
-                            ] = False
-
+                            st.session_state[delete_key] = False
                             st.rerun()
 
             # ---------------------------------------------
