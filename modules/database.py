@@ -1,3 +1,4 @@
+```python
 import sqlite3
 from pathlib import Path
 
@@ -49,8 +50,7 @@ def add_column_if_missing(
     ).fetchall()
 
     existing_columns = {
-        column["name"]
-        for column in columns
+        column["name"] for column in columns
     }
 
     if column_name not in existing_columns:
@@ -65,7 +65,7 @@ def add_column_if_missing(
 
 def migrate_database(connection):
 
-    # TASKS
+    # Tasks migrations
     add_column_if_missing(
         connection,
         "tasks",
@@ -87,7 +87,7 @@ def migrate_database(connection):
         "TEXT",
     )
 
-    # Keep old deadline data compatible
+    # Keep old deadline values compatible
     connection.execute(
         """
         UPDATE tasks
@@ -109,52 +109,33 @@ def migrate_database(connection):
 def init_db():
 
     connection = get_connection()
-    cursor = connection.cursor()
 
-    cursor.executescript(
+    connection.executescript(
         """
 
         CREATE TABLE IF NOT EXISTS clients (
-
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-
             name TEXT NOT NULL,
-
             company TEXT,
-
             email TEXT,
-
             phone TEXT,
-
             website TEXT,
-
             status TEXT NOT NULL DEFAULT 'Lead',
-
             notes TEXT,
-
             created_at TIMESTAMP
                 DEFAULT CURRENT_TIMESTAMP
         );
 
 
         CREATE TABLE IF NOT EXISTS projects (
-
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-
             client_id INTEGER,
-
             name TEXT NOT NULL,
-
             description TEXT,
-
             deadline TEXT,
-
             progress INTEGER DEFAULT 0,
-
             priority TEXT DEFAULT 'Medium',
-
             status TEXT DEFAULT 'Active',
-
             created_at TIMESTAMP
                 DEFAULT CURRENT_TIMESTAMP,
 
@@ -165,19 +146,12 @@ def init_db():
 
 
         CREATE TABLE IF NOT EXISTS tasks (
-
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-
             project_id INTEGER,
-
             title TEXT NOT NULL,
-
             deadline TEXT,
-
             priority TEXT DEFAULT 'Medium',
-
             status TEXT DEFAULT 'To Do',
-
             created_at TIMESTAMP
                 DEFAULT CURRENT_TIMESTAMP,
 
@@ -188,21 +162,13 @@ def init_db():
 
 
         CREATE TABLE IF NOT EXISTS proposals (
-
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-
             client_id INTEGER,
-
             title TEXT NOT NULL,
-
             description TEXT,
-
             timeline TEXT,
-
             payment_terms TEXT,
-
             status TEXT DEFAULT 'Draft',
-
             created_at TIMESTAMP
                 DEFAULT CURRENT_TIMESTAMP,
 
@@ -213,13 +179,9 @@ def init_db():
 
 
         CREATE TABLE IF NOT EXISTS proposal_items (
-
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-
             proposal_id INTEGER,
-
             service TEXT NOT NULL,
-
             price REAL DEFAULT 0,
 
             FOREIGN KEY (proposal_id)
@@ -229,25 +191,15 @@ def init_db():
 
 
         CREATE TABLE IF NOT EXISTS invoices (
-
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-
             client_id INTEGER,
-
             invoice_number TEXT UNIQUE,
-
             due_date TEXT,
-
             subtotal REAL DEFAULT 0,
-
             tax REAL DEFAULT 0,
-
             discount REAL DEFAULT 0,
-
             total REAL DEFAULT 0,
-
             status TEXT DEFAULT 'Unpaid',
-
             created_at TIMESTAMP
                 DEFAULT CURRENT_TIMESTAMP,
 
@@ -258,15 +210,10 @@ def init_db():
 
 
         CREATE TABLE IF NOT EXISTS invoice_items (
-
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-
             invoice_id INTEGER,
-
             service TEXT NOT NULL,
-
             quantity INTEGER DEFAULT 1,
-
             price REAL DEFAULT 0,
 
             FOREIGN KEY (invoice_id)
@@ -276,9 +223,7 @@ def init_db():
 
 
         CREATE TABLE IF NOT EXISTS settings (
-
             key TEXT PRIMARY KEY,
-
             value TEXT
         );
 
@@ -316,22 +261,21 @@ def init_db():
 
 
 # =========================================================
-# DASHBOARD STATISTICS
+# DASHBOARD STATS
 # =========================================================
 
 def get_dashboard_stats():
 
     connection = get_connection()
-    cursor = connection.cursor()
 
-    clients = cursor.execute(
+    clients = connection.execute(
         """
         SELECT COUNT(*)
         FROM clients
         """
     ).fetchone()[0]
 
-    projects = cursor.execute(
+    projects = connection.execute(
         """
         SELECT COUNT(*)
         FROM projects
@@ -339,7 +283,7 @@ def get_dashboard_stats():
         """
     ).fetchone()[0]
 
-    tasks = cursor.execute(
+    tasks = connection.execute(
         """
         SELECT COUNT(*)
         FROM tasks
@@ -347,7 +291,7 @@ def get_dashboard_stats():
         """
     ).fetchone()[0]
 
-    outstanding = cursor.execute(
+    outstanding = connection.execute(
         """
         SELECT COALESCE(SUM(total), 0)
         FROM invoices
@@ -355,7 +299,7 @@ def get_dashboard_stats():
         """
     ).fetchone()[0]
 
-    paid_revenue = cursor.execute(
+    paid_revenue = connection.execute(
         """
         SELECT COALESCE(SUM(total), 0)
         FROM invoices
@@ -363,14 +307,14 @@ def get_dashboard_stats():
         """
     ).fetchone()[0]
 
-    total_invoices = cursor.execute(
+    total_invoices = connection.execute(
         """
         SELECT COUNT(*)
         FROM invoices
         """
     ).fetchone()[0]
 
-    paid_invoices = cursor.execute(
+    paid_invoices = connection.execute(
         """
         SELECT COUNT(*)
         FROM invoices
@@ -378,7 +322,7 @@ def get_dashboard_stats():
         """
     ).fetchone()[0]
 
-    proposals = cursor.execute(
+    proposals = connection.execute(
         """
         SELECT COUNT(*)
         FROM proposals
@@ -391,8 +335,8 @@ def get_dashboard_stats():
         "clients": clients,
         "projects": projects,
         "tasks": tasks,
-        "outstanding": outstanding or 0,
-        "paid_revenue": paid_revenue or 0,
+        "outstanding": float(outstanding or 0),
+        "paid_revenue": float(paid_revenue or 0),
         "total_invoices": total_invoices,
         "paid_invoices": paid_invoices,
         "proposals": proposals,
@@ -400,7 +344,7 @@ def get_dashboard_stats():
 
 
 # =========================================================
-# REVENUE OVERVIEW
+# REVENUE DATA
 # =========================================================
 
 def get_revenue_overview():
@@ -441,107 +385,69 @@ def get_recent_activity(limit=8):
 
     activities = []
 
-    client_rows = connection.execute(
+    rows = connection.execute(
         """
         SELECT
-            name,
+            'Client' AS type,
+            name AS title,
             created_at
         FROM clients
-        ORDER BY id DESC
-        LIMIT ?
-        """,
-        (limit,),
-    ).fetchall()
 
-    for row in client_rows:
-        activities.append(
-            {
-                "type": "Client",
-                "title": f"New client: {row['name']}",
-                "created_at": row["created_at"],
-            }
-        )
+        UNION ALL
 
-    project_rows = connection.execute(
-        """
         SELECT
-            name,
+            'Project' AS type,
+            name AS title,
             created_at
         FROM projects
-        ORDER BY id DESC
-        LIMIT ?
-        """,
-        (limit,),
-    ).fetchall()
 
-    for row in project_rows:
-        activities.append(
-            {
-                "type": "Project",
-                "title": f"Project created: {row['name']}",
-                "created_at": row["created_at"],
-            }
-        )
+        UNION ALL
 
-    proposal_rows = connection.execute(
-        """
         SELECT
-            title,
-            status,
+            'Proposal' AS type,
+            title AS title,
             created_at
         FROM proposals
-        ORDER BY id DESC
-        LIMIT ?
-        """,
-        (limit,),
-    ).fetchall()
 
-    for row in proposal_rows:
-        activities.append(
-            {
-                "type": "Proposal",
-                "title": f"Proposal: {row['title']} ({row['status']})",
-                "created_at": row["created_at"],
-            }
-        )
+        UNION ALL
 
-    invoice_rows = connection.execute(
-        """
         SELECT
-            invoice_number,
-            total,
-            status,
+            'Invoice' AS type,
+            COALESCE(invoice_number, 'Invoice') AS title,
             created_at
         FROM invoices
-        ORDER BY id DESC
+
+        ORDER BY created_at DESC
         LIMIT ?
         """,
         (limit,),
     ).fetchall()
-
-    for row in invoice_rows:
-        invoice_name = row["invoice_number"] or "Invoice"
-
-        activities.append(
-            {
-                "type": "Invoice",
-                "title": (
-                    f"{invoice_name}: "
-                    f"${float(row['total'] or 0):,.2f} "
-                    f"({row['status']})"
-                ),
-                "created_at": row["created_at"],
-            }
-        )
 
     connection.close()
 
-    activities.sort(
-        key=lambda item: item["created_at"] or "",
-        reverse=True,
-    )
+    for row in rows:
 
-    return activities[:limit]
+        if row["type"] == "Client":
+            title = f"New client: {row['title']}"
+
+        elif row["type"] == "Project":
+            title = f"Project created: {row['title']}"
+
+        elif row["type"] == "Proposal":
+            title = f"Proposal created: {row['title']}"
+
+        else:
+            title = f"Invoice created: {row['title']}"
+
+        activities.append(
+            {
+                "type": row["type"],
+                "title": title,
+                "created_at": row["created_at"],
+            }
+        )
+
+    return activities
 
 
 # =========================================================
@@ -556,22 +462,35 @@ def get_upcoming_tasks(limit=5):
         """
         SELECT
             tasks.title,
-            tasks.due_date,
-            tasks.deadline,
+            COALESCE(
+                NULLIF(tasks.due_date, ''),
+                tasks.deadline
+            ) AS due_date,
             tasks.priority,
             tasks.status,
             projects.name AS project_name
+
         FROM tasks
+
         LEFT JOIN projects
             ON tasks.project_id = projects.id
+
         WHERE tasks.status != 'Done'
+
         ORDER BY
             CASE
-                WHEN tasks.due_date IS NULL
-                    OR tasks.due_date = ''
-                THEN tasks.deadline
-                ELSE tasks.due_date
-            END ASC
+                WHEN COALESCE(
+                    NULLIF(tasks.due_date, ''),
+                    tasks.deadline
+                ) IS NULL
+                THEN 1
+                ELSE 0
+            END,
+            COALESCE(
+                NULLIF(tasks.due_date, ''),
+                tasks.deadline
+            ) ASC
+
         LIMIT ?
         """,
         (limit,),
@@ -582,10 +501,11 @@ def get_upcoming_tasks(limit=5):
     return [
         {
             "title": row["title"],
-            "due_date": row["due_date"] or row["deadline"],
-            "priority": row["priority"],
-            "status": row["status"],
+            "due_date": row["due_date"],
+            "priority": row["priority"] or "Medium",
+            "status": row["status"] or "To Do",
             "project_name": row["project_name"],
         }
         for row in rows
     ]
+```
