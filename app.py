@@ -1397,4 +1397,3 @@ elif st.session_state.page == "📈 Reports":
             f"**Paid Revenue:** "
             f"${float(paid_revenue):,.2f}"
         )
-```
