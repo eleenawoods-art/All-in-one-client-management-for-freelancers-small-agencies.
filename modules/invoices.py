@@ -1,36 +1,31 @@
 ```python
-import sqlite3
-from datetime import date, datetime
-
 import streamlit as st
+from datetime import date
+import sqlite3
 
 from modules.database import get_connection
 
 
-# =========================================================
-# HELPERS
-# =========================================================
-
 def get_clients():
-    connection = get_connection()
+    conn = get_connection()
 
-    rows = connection.execute(
+    rows = conn.execute(
         """
-        SELECT id, name, company, email
+        SELECT id, name, company
         FROM clients
-        ORDER BY name ASC
+        ORDER BY name
         """
     ).fetchall()
 
-    connection.close()
+    conn.close()
 
     return rows
 
 
 def get_invoices():
-    connection = get_connection()
+    conn = get_connection()
 
-    rows = connection.execute(
+    rows = conn.execute(
         """
         SELECT
             invoices.id,
@@ -51,37 +46,33 @@ def get_invoices():
         """
     ).fetchall()
 
-    connection.close()
+    conn.close()
 
     return rows
 
 
 def get_invoice_items(invoice_id):
-    connection = get_connection()
+    conn = get_connection()
 
-    rows = connection.execute(
+    rows = conn.execute(
         """
-        SELECT
-            id,
-            service,
-            quantity,
-            price
+        SELECT id, service, quantity, price
         FROM invoice_items
         WHERE invoice_id = ?
-        ORDER BY id ASC
+        ORDER BY id
         """,
         (invoice_id,),
     ).fetchall()
 
-    connection.close()
+    conn.close()
 
     return rows
 
 
 def generate_invoice_number():
-    connection = get_connection()
+    conn = get_connection()
 
-    row = connection.execute(
+    row = conn.execute(
         """
         SELECT id
         FROM invoices
@@ -90,229 +81,152 @@ def generate_invoice_number():
         """
     ).fetchone()
 
-    connection.close()
+    conn.close()
 
-    next_id = 1 if row is None else int(row["id"]) + 1
+    if row:
+        next_id = int(row["id"]) + 1
+    else:
+        next_id = 1
 
-    return f"INV-{datetime.now().year}-{next_id:04d}"
+    return f"INV-{date.today().year}-{next_id:04d}"
 
 
-def calculate_total(subtotal, tax_percent, discount):
-    tax_amount = subtotal * (tax_percent / 100)
+def calculate_invoice_total(items, tax_percent, discount):
+    subtotal = 0.0
 
-    total = subtotal + tax_amount - discount
+    for item in items:
+        subtotal += (
+            float(item["quantity"])
+            * float(item["price"])
+        )
+
+    tax_amount = subtotal * (
+        float(tax_percent) / 100
+    )
+
+    total = subtotal + tax_amount - float(discount)
 
     if total < 0:
-        total = 0
+        total = 0.0
 
-    return tax_amount, total
-
-
-def delete_invoice(invoice_id):
-    connection = get_connection()
-
-    connection.execute(
-        "DELETE FROM invoices WHERE id = ?",
-        (invoice_id,),
-    )
-
-    connection.commit()
-    connection.close()
+    return subtotal, tax_amount, total
 
 
-def update_invoice_status(invoice_id, status):
-    connection = get_connection()
-
-    connection.execute(
-        """
-        UPDATE invoices
-        SET status = ?
-        WHERE id = ?
-        """,
-        (status, invoice_id),
-    )
-
-    connection.commit()
-    connection.close()
-
-
-def save_invoice(
+def create_invoice(
     client_id,
     invoice_number,
     due_date,
     tax_percent,
     discount,
-    items,
     status,
+    items,
 ):
-    connection = get_connection()
-
-    subtotal = sum(
-        float(item["quantity"]) * float(item["price"])
-        for item in items
-    )
-
-    tax_amount, total = calculate_total(
-        subtotal,
-        tax_percent,
-        discount,
-    )
-
-    cursor = connection.cursor()
-
-    cursor.execute(
-        """
-        INSERT INTO invoices (
-            client_id,
-            invoice_number,
-            due_date,
-            subtotal,
-            tax,
+    subtotal, tax_amount, total = (
+        calculate_invoice_total(
+            items,
+            tax_percent,
             discount,
-            total,
-            status
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            client_id,
-            invoice_number,
-            due_date,
-            subtotal,
-            tax_amount,
-            discount,
-            total,
-            status,
-        ),
     )
 
-    invoice_id = cursor.lastrowid
+    conn = get_connection()
 
-    for item in items:
+    try:
+        cursor = conn.cursor()
 
         cursor.execute(
             """
-            INSERT INTO invoice_items (
-                invoice_id,
-                service,
-                quantity,
-                price
+            INSERT INTO invoices (
+                client_id,
+                invoice_number,
+                due_date,
+                subtotal,
+                tax,
+                discount,
+                total,
+                status
             )
-            VALUES (?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                invoice_id,
-                item["service"],
-                int(item["quantity"]),
-                float(item["price"]),
+                client_id,
+                invoice_number,
+                str(due_date),
+                subtotal,
+                tax_amount,
+                float(discount),
+                total,
+                status,
             ),
         )
 
-    connection.commit()
-    connection.close()
+        invoice_id = cursor.lastrowid
 
-    return invoice_id
+        for item in items:
+
+            cursor.execute(
+                """
+                INSERT INTO invoice_items (
+                    invoice_id,
+                    service,
+                    quantity,
+                    price
+                )
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    invoice_id,
+                    item["service"],
+                    int(item["quantity"]),
+                    float(item["price"]),
+                ),
+            )
+
+        conn.commit()
+
+        return invoice_id
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()
 
 
-# =========================================================
-# INVOICE PREVIEW
-# =========================================================
+def update_status(invoice_id, status):
+    conn = get_connection()
 
-def render_invoice_preview(invoice, items):
-
-    st.markdown("---")
-
-    st.subheader(
-        f"Invoice {invoice['invoice_number']}"
+    conn.execute(
+        """
+        UPDATE invoices
+        SET status = ?
+        WHERE id = ?
+        """,
+        (
+            status,
+            invoice_id,
+        ),
     )
 
-    left, right = st.columns(2)
-
-    with left:
-
-        st.markdown("### Bill To")
-
-        st.write(
-            f"**{invoice['client_name'] or 'Unknown Client'}**"
-        )
-
-        if invoice["company"]:
-            st.caption(invoice["company"])
-
-    with right:
-
-        st.markdown("### Invoice Details")
-
-        st.write(
-            f"**Invoice:** {invoice['invoice_number']}"
-        )
-
-        st.write(
-            f"**Due Date:** {invoice['due_date'] or 'Not set'}"
-        )
-
-        st.write(
-            f"**Status:** {invoice['status']}"
-        )
-
-    st.markdown("### Services")
-
-    for item in items:
-
-        item_total = (
-            float(item["quantity"])
-            * float(item["price"])
-        )
-
-        c1, c2, c3, c4 = st.columns(
-            [4, 1, 2, 2]
-        )
-
-        with c1:
-            st.write(item["service"])
-
-        with c2:
-            st.write(item["quantity"])
-
-        with c3:
-            st.write(
-                f"${float(item['price']):,.2f}"
-            )
-
-        with c4:
-            st.write(
-                f"${item_total:,.2f}"
-            )
-
-    st.divider()
-
-    summary1, summary2 = st.columns(2)
-
-    with summary2:
-
-        st.write(
-            f"**Subtotal:** "
-            f"${float(invoice['subtotal']):,.2f}"
-        )
-
-        st.write(
-            f"**Tax:** "
-            f"${float(invoice['tax']):,.2f}"
-        )
-
-        st.write(
-            f"**Discount:** "
-            f"${float(invoice['discount']):,.2f}"
-        )
-
-        st.markdown(
-            f"### Total: ${float(invoice['total']):,.2f}"
-        )
+    conn.commit()
+    conn.close()
 
 
-# =========================================================
-# CREATE INVOICE
-# =========================================================
+def delete_invoice(invoice_id):
+    conn = get_connection()
+
+    conn.execute(
+        """
+        DELETE FROM invoices
+        WHERE id = ?
+        """,
+        (invoice_id,),
+    )
+
+    conn.commit()
+    conn.close()
+
 
 def render_create_invoice():
 
@@ -321,8 +235,7 @@ def render_create_invoice():
     if not clients:
 
         st.warning(
-            "You need at least one client before "
-            "creating an invoice."
+            "Please add a client before creating an invoice."
         )
 
         if st.button(
@@ -336,7 +249,7 @@ def render_create_invoice():
 
     st.subheader("Create New Invoice")
 
-    client_options = {}
+    client_labels = {}
 
     for client in clients:
 
@@ -345,11 +258,11 @@ def render_create_invoice():
         if client["company"]:
             label += f" — {client['company']}"
 
-        client_options[label] = client["id"]
+        client_labels[label] = client["id"]
 
     selected_client = st.selectbox(
         "Client",
-        list(client_options.keys()),
+        list(client_labels.keys()),
     )
 
     invoice_number = st.text_input(
@@ -373,36 +286,36 @@ def render_create_invoice():
             }
         ]
 
-    items_to_remove = []
+    remove_index = None
 
     for index, item in enumerate(
         st.session_state.invoice_items
     ):
 
-        c1, c2, c3, c4 = st.columns(
-            [4, 1.2, 2, 0.7]
+        col1, col2, col3, col4 = st.columns(
+            [4, 1, 2, 0.6]
         )
 
-        with c1:
+        with col1:
 
             item["service"] = st.text_input(
                 "Service",
                 value=item["service"],
-                key=f"service_{index}",
-                placeholder="Website design",
+                key=f"invoice_service_{index}",
+                placeholder="Website Design",
             )
 
-        with c2:
+        with col2:
 
             item["quantity"] = st.number_input(
                 "Qty",
                 min_value=1,
                 value=int(item["quantity"]),
                 step=1,
-                key=f"quantity_{index}",
+                key=f"invoice_qty_{index}",
             )
 
-        with c3:
+        with col3:
 
             item["price"] = st.number_input(
                 "Price",
@@ -410,32 +323,33 @@ def render_create_invoice():
                 value=float(item["price"]),
                 step=10.0,
                 format="%.2f",
-                key=f"price_{index}",
+                key=f"invoice_price_{index}",
             )
 
-        with c4:
+        with col4:
 
             st.write("")
 
             if st.button(
                 "🗑️",
-                key=f"remove_{index}",
+                key=f"invoice_remove_{index}",
             ):
+                remove_index = index
 
-                items_to_remove.append(index)
-
-    for index in reversed(items_to_remove):
+    if remove_index is not None:
 
         if len(
             st.session_state.invoice_items
         ) > 1:
 
-            st.session_state.invoice_items.pop(index)
+            st.session_state.invoice_items.pop(
+                remove_index
+            )
 
             st.rerun()
 
     if st.button(
-        "➕ Add Another Item",
+        "➕ Add Item",
         use_container_width=True,
     ):
 
@@ -468,54 +382,50 @@ def render_create_invoice():
     status = st.selectbox(
         "Status",
         [
+            "Draft",
             "Unpaid",
             "Paid",
             "Overdue",
-            "Draft",
         ],
     )
 
-    # -----------------------------------------------------
-    # TOTAL PREVIEW
-    # -----------------------------------------------------
+    valid_items = []
 
-    subtotal = sum(
-        float(item["quantity"])
-        * float(item["price"])
-        for item in st.session_state.invoice_items
-    )
+    for item in st.session_state.invoice_items:
 
-    tax_amount, total = calculate_total(
-        subtotal,
-        tax_percent,
-        discount,
+        if item["service"].strip():
+
+            valid_items.append(item)
+
+    subtotal, tax_amount, total = (
+        calculate_invoice_total(
+            valid_items,
+            tax_percent,
+            discount,
+        )
     )
 
     st.divider()
 
-    a, b, c = st.columns(3)
+    c1, c2, c3 = st.columns(3)
 
-    with a:
+    with c1:
         st.metric(
             "Subtotal",
             f"${subtotal:,.2f}",
         )
 
-    with b:
+    with c2:
         st.metric(
             "Tax",
             f"${tax_amount:,.2f}",
         )
 
-    with c:
+    with c3:
         st.metric(
             "Total",
             f"${total:,.2f}",
         )
-
-    # -----------------------------------------------------
-    # SAVE
-    # -----------------------------------------------------
 
     if st.button(
         "💾 Create Invoice",
@@ -523,31 +433,13 @@ def render_create_invoice():
         use_container_width=True,
     ):
 
-        valid_items = []
+        if not invoice_number.strip():
 
-        for item in st.session_state.invoice_items:
-
-            service = str(
-                item["service"]
-            ).strip()
-
-            quantity = int(
-                item["quantity"]
+            st.error(
+                "Invoice number is required."
             )
 
-            price = float(
-                item["price"]
-            )
-
-            if service:
-
-                valid_items.append(
-                    {
-                        "service": service,
-                        "quantity": quantity,
-                        "price": price,
-                    }
-                )
+            return
 
         if not valid_items:
 
@@ -559,16 +451,16 @@ def render_create_invoice():
 
         try:
 
-            invoice_id = save_invoice(
-                client_id=client_options[
+            invoice_id = create_invoice(
+                client_id=client_labels[
                     selected_client
                 ],
                 invoice_number=invoice_number.strip(),
-                due_date=str(due_date),
+                due_date=due_date,
                 tax_percent=tax_percent,
                 discount=discount,
-                items=valid_items,
                 status=status,
+                items=valid_items,
             )
 
             st.session_state.invoice_items = [
@@ -583,27 +475,25 @@ def render_create_invoice():
                 f"Invoice {invoice_number} created successfully."
             )
 
-            st.session_state.selected_invoice = invoice_id
+            st.session_state.selected_invoice = (
+                invoice_id
+            )
 
             st.rerun()
 
         except sqlite3.IntegrityError:
 
             st.error(
-                "That invoice number already exists. "
-                "Please use a different invoice number."
+                "This invoice number already exists. "
+                "Please use another number."
             )
 
         except Exception as error:
 
             st.error(
-                f"Unable to create invoice: {error}"
+                f"Could not create invoice: {error}"
             )
 
-
-# =========================================================
-# INVOICE LIST
-# =========================================================
 
 def render_invoice_list():
 
@@ -612,8 +502,7 @@ def render_invoice_list():
     if not invoices:
 
         st.info(
-            "No invoices yet. "
-            "Create your first invoice above."
+            "No invoices yet. Create your first invoice above."
         )
 
         return
@@ -621,29 +510,35 @@ def render_invoice_list():
     st.subheader("All Invoices")
 
     search = st.text_input(
-        "🔎 Search invoices",
-        placeholder="Search by invoice number or client...",
+        "🔎 Search",
+        placeholder="Search invoice or client...",
     )
 
     status_filter = st.selectbox(
-        "Filter by status",
+        "Status",
         [
             "All",
-            "Paid",
-            "Unpaid",
-            "Overdue",
             "Draft",
+            "Unpaid",
+            "Paid",
+            "Overdue",
         ],
     )
 
-    filtered = []
-
     for invoice in invoices:
 
+        invoice_number = (
+            invoice["invoice_number"] or ""
+        )
+
+        client_name = (
+            invoice["client_name"] or ""
+        )
+
         search_text = (
-            f"{invoice['invoice_number'] or ''} "
-            f"{invoice['client_name'] or ''} "
-            f"{invoice['company'] or ''}"
+            invoice_number
+            + " "
+            + client_name
         ).lower()
 
         if search.strip().lower() not in search_text:
@@ -655,32 +550,20 @@ def render_invoice_list():
         ):
             continue
 
-        filtered.append(invoice)
-
-    if not filtered:
-
-        st.info(
-            "No invoices match your filters."
-        )
-
-        return
-
-    for invoice in filtered:
-
         with st.container(border=True):
 
             c1, c2, c3, c4, c5 = st.columns(
-                [2, 2.5, 1.2, 1.5, 1.5]
+                [2, 2.5, 1.3, 1.5, 1]
             )
 
             with c1:
 
                 st.markdown(
-                    f"**{invoice['invoice_number']}**"
+                    f"**{invoice_number}**"
                 )
 
                 st.caption(
-                    invoice["created_at"] or ""
+                    str(invoice["created_at"] or "")
                 )
 
             with c2:
@@ -697,19 +580,21 @@ def render_invoice_list():
 
             with c3:
 
-                status = invoice["status"]
+                if invoice["status"] == "Paid":
 
-                if status == "Paid":
-                    st.success(status)
+                    st.success("Paid")
 
-                elif status == "Overdue":
-                    st.error(status)
+                elif invoice["status"] == "Overdue":
 
-                elif status == "Draft":
-                    st.info(status)
+                    st.error("Overdue")
+
+                elif invoice["status"] == "Draft":
+
+                    st.info("Draft")
 
                 else:
-                    st.warning(status)
+
+                    st.warning("Unpaid")
 
             with c4:
 
@@ -725,7 +610,7 @@ def render_invoice_list():
 
                 if st.button(
                     "View",
-                    key=f"view_{invoice['id']}",
+                    key=f"invoice_view_{invoice['id']}",
                     use_container_width=True,
                 ):
 
@@ -736,23 +621,18 @@ def render_invoice_list():
                     st.rerun()
 
 
-# =========================================================
-# INVOICE DETAILS
-# =========================================================
-
 def render_invoice_details(invoice_id):
 
-    connection = get_connection()
+    conn = get_connection()
 
-    invoice = connection.execute(
+    invoice = conn.execute(
         """
         SELECT
             invoices.*,
             clients.name AS client_name,
             clients.company,
             clients.email,
-            clients.phone,
-            clients.website
+            clients.phone
         FROM invoices
         LEFT JOIN clients
             ON invoices.client_id = clients.id
@@ -761,7 +641,7 @@ def render_invoice_details(invoice_id):
         (invoice_id,),
     ).fetchone()
 
-    connection.close()
+    conn.close()
 
     if not invoice:
 
@@ -773,83 +653,162 @@ def render_invoice_details(invoice_id):
 
     if st.button("← Back to Invoices"):
 
-        del st.session_state.selected_invoice
+        st.session_state.pop(
+            "selected_invoice",
+            None,
+        )
 
         st.rerun()
 
-    render_invoice_preview(
-        invoice,
-        items,
+    st.subheader(
+        f"Invoice {invoice['invoice_number']}"
     )
 
-    st.markdown("---")
+    c1, c2 = st.columns(2)
+
+    with c1:
+
+        st.markdown("### Bill To")
+
+        st.write(
+            f"**{invoice['client_name'] or 'Unknown Client'}**"
+        )
+
+        if invoice["company"]:
+            st.caption(invoice["company"])
+
+        if invoice["email"]:
+            st.caption(invoice["email"])
+
+        if invoice["phone"]:
+            st.caption(invoice["phone"])
+
+    with c2:
+
+        st.markdown("### Invoice Details")
+
+        st.write(
+            f"Invoice: **{invoice['invoice_number']}**"
+        )
+
+        st.write(
+            f"Due Date: **{invoice['due_date'] or 'N/A'}**"
+        )
+
+        st.write(
+            f"Status: **{invoice['status']}**"
+        )
+
+    st.markdown("### Services")
+
+    for item in items:
+
+        total = (
+            float(item["quantity"])
+            * float(item["price"])
+        )
+
+        c1, c2, c3, c4 = st.columns(
+            [4, 1, 2, 2]
+        )
+
+        with c1:
+            st.write(item["service"])
+
+        with c2:
+            st.write(item["quantity"])
+
+        with c3:
+            st.write(
+                f"${float(item['price']):,.2f}"
+            )
+
+        with c4:
+            st.write(
+                f"${total:,.2f}"
+            )
+
+    st.divider()
+
+    c1, c2 = st.columns(2)
+
+    with c2:
+
+        st.write(
+            f"Subtotal: "
+            f"${float(invoice['subtotal']):,.2f}"
+        )
+
+        st.write(
+            f"Tax: "
+            f"${float(invoice['tax']):,.2f}"
+        )
+
+        st.write(
+            f"Discount: "
+            f"${float(invoice['discount']):,.2f}"
+        )
+
+        st.markdown(
+            f"### Total: ${float(invoice['total']):,.2f}"
+        )
+
+    st.divider()
 
     st.subheader("Invoice Actions")
 
-    c1, c2, c3, c4 = st.columns(4)
+    a, b, c, d = st.columns(4)
 
-    with c1:
+    with a:
 
         if st.button(
             "✅ Mark Paid",
             use_container_width=True,
         ):
 
-            update_invoice_status(
+            update_status(
                 invoice_id,
                 "Paid",
             )
 
-            st.success(
-                "Invoice marked as paid."
-            )
-
             st.rerun()
 
-    with c2:
+    with b:
 
         if st.button(
             "⏳ Mark Unpaid",
             use_container_width=True,
         ):
 
-            update_invoice_status(
+            update_status(
                 invoice_id,
                 "Unpaid",
             )
 
-            st.success(
-                "Invoice marked as unpaid."
-            )
-
             st.rerun()
 
-    with c3:
+    with c:
 
         if st.button(
             "⚠️ Mark Overdue",
             use_container_width=True,
         ):
 
-            update_invoice_status(
+            update_status(
                 invoice_id,
                 "Overdue",
             )
 
-            st.warning(
-                "Invoice marked as overdue."
-            )
-
             st.rerun()
 
-    with c4:
+    with d:
 
         if st.button(
-            "🗑️ Delete Invoice",
+            "🗑️ Delete",
             use_container_width=True,
         ):
 
-            st.session_state.confirm_delete_invoice = (
+            st.session_state.confirm_invoice_delete = (
                 invoice_id
             )
 
@@ -857,19 +816,18 @@ def render_invoice_details(invoice_id):
 
     if (
         st.session_state.get(
-            "confirm_delete_invoice"
+            "confirm_invoice_delete"
         )
         == invoice_id
     ):
 
         st.warning(
-            "Are you sure you want to permanently "
-            "delete this invoice?"
+            "This will permanently delete the invoice."
         )
 
-        d1, d2 = st.columns(2)
+        x, y = st.columns(2)
 
-        with d1:
+        with x:
 
             if st.button(
                 "Yes, Delete",
@@ -879,37 +837,36 @@ def render_invoice_details(invoice_id):
 
                 delete_invoice(invoice_id)
 
-                del st.session_state[
-                    "confirm_delete_invoice"
-                ]
+                st.session_state.pop(
+                    "selected_invoice",
+                    None,
+                )
 
-                del st.session_state[
-                    "selected_invoice"
-                ]
+                st.session_state.pop(
+                    "confirm_invoice_delete",
+                    None,
+                )
 
                 st.success(
-                    "Invoice deleted successfully."
+                    "Invoice deleted."
                 )
 
                 st.rerun()
 
-        with d2:
+        with y:
 
             if st.button(
                 "Cancel",
                 use_container_width=True,
             ):
 
-                del st.session_state[
-                    "confirm_delete_invoice"
-                ]
+                st.session_state.pop(
+                    "confirm_invoice_delete",
+                    None,
+                )
 
                 st.rerun()
 
-
-# =========================================================
-# MAIN INVOICE PAGE
-# =========================================================
 
 def render_invoices_page():
 
@@ -917,40 +874,26 @@ def render_invoices_page():
 
     st.caption(
         "Create invoices, track payments, and manage "
-        "your outstanding client balances."
+        "outstanding balances."
     )
 
-    # -----------------------------------------------------
-    # SELECTED INVOICE
-    # -----------------------------------------------------
-
-    selected_invoice = st.session_state.get(
-        "selected_invoice"
-    )
-
-    if selected_invoice:
+    if st.session_state.get("selected_invoice"):
 
         render_invoice_details(
-            selected_invoice
+            st.session_state.selected_invoice
         )
 
         return
 
-    # -----------------------------------------------------
-    # SUMMARY
-    # -----------------------------------------------------
-
     invoices = get_invoices()
 
-    total_invoices = len(invoices)
-
-    paid_amount = sum(
+    paid_total = sum(
         float(invoice["total"] or 0)
         for invoice in invoices
         if invoice["status"] == "Paid"
     )
 
-    outstanding_amount = sum(
+    outstanding_total = sum(
         float(invoice["total"] or 0)
         for invoice in invoices
         if invoice["status"] != "Paid"
@@ -962,39 +905,31 @@ def render_invoices_page():
         if invoice["status"] == "Overdue"
     )
 
-    s1, s2, s3, s4 = st.columns(4)
+    c1, c2, c3, c4 = st.columns(4)
 
-    with s1:
-
+    with c1:
         with st.container(border=True):
-
             st.metric(
                 "📄 Total Invoices",
-                total_invoices,
+                len(invoices),
             )
 
-    with s2:
-
+    with c2:
         with st.container(border=True):
-
             st.metric(
                 "✅ Paid",
-                f"${paid_amount:,.2f}",
+                f"${paid_total:,.2f}",
             )
 
-    with s3:
-
+    with c3:
         with st.container(border=True):
-
             st.metric(
                 "💰 Outstanding",
-                f"${outstanding_amount:,.2f}",
+                f"${outstanding_total:,.2f}",
             )
 
-    with s4:
-
+    with c4:
         with st.container(border=True):
-
             st.metric(
                 "⚠️ Overdue",
                 overdue_count,
@@ -1002,22 +937,14 @@ def render_invoices_page():
 
     st.write("")
 
-    # -----------------------------------------------------
-    # CREATE
-    # -----------------------------------------------------
-
     with st.expander(
         "➕ Create New Invoice",
-        expanded=not bool(invoices),
+        expanded=len(invoices) == 0,
     ):
 
         render_create_invoice()
 
     st.write("")
-
-    # -----------------------------------------------------
-    # LIST
-    # -----------------------------------------------------
 
     render_invoice_list()
 ```
