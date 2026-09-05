@@ -6,9 +6,7 @@ from modules.clients import render_clients_page
 from modules.projects import render_projects_page
 from modules.tasks import render_tasks_page
 from modules.proposals import render_proposals_page
-elif st.session_state.page == "💰 Invoices":
-
-    render_invoices_page()
+from modules.invoices import render_invoices_page
 st.set_page_config(
     page_title="ClientFlow AI",
     page_icon="✨",
