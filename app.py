@@ -1,16 +1,12 @@
-```python
 import streamlit as st
 
-from modules.database import (
-    init_db,
-    get_dashboard_stats,
-    get_connection,
-)
+from modules.database import init_db, get_dashboard_stats, get_connection
 
+from modules.clients import render_clients_page
+from modules.projects import render_projects_page
+from modules.tasks import render_tasks_page
+from modules.proposals import render_proposals_page
 
-# =========================================================
-# PAGE CONFIG
-# =========================================================
 
 st.set_page_config(
     page_title="ClientFlow AI",
@@ -19,12 +15,46 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-
-# =========================================================
-# DATABASE
-# =========================================================
-
 init_db()
+
+
+# =========================================================
+# CSS
+# =========================================================
+
+st.markdown(
+    """
+    <style>
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 3rem;
+        max-width: 1500px;
+    }
+
+    [data-testid="stSidebar"] {
+        border-right: 1px solid rgba(128,128,128,0.15);
+    }
+
+    .main-title {
+        font-size: 2.2rem;
+        font-weight: 750;
+        margin-bottom: 0.2rem;
+    }
+
+    .main-subtitle {
+        color: #777;
+        font-size: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    [data-testid="stMetricValue"] {
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 # =========================================================
@@ -42,80 +72,22 @@ NAVIGATION = [
     "📈 Reports",
 ]
 
-
 if "page" not in st.session_state:
     st.session_state.page = "📊 Dashboard"
 
 
-# =========================================================
-# CUSTOM CSS
-# =========================================================
-
-st.markdown(
-    """
-    <style>
-
-    .block-container {
-        padding-top: 2rem;
-        padding-bottom: 3rem;
-        max-width: 1500px;
-    }
-
-    [data-testid="stSidebar"] {
-        border-right: 1px solid rgba(128,128,128,0.15);
-    }
-
-    [data-testid="stSidebar"] h1 {
-        font-size: 1.5rem;
-    }
-
-    .main-title {
-        font-size: 2.2rem;
-        font-weight: 750;
-        margin-bottom: 0.2rem;
-    }
-
-    .main-subtitle {
-        color: #777;
-        font-size: 1rem;
-        margin-bottom: 1.5rem;
-    }
-
-    [data-testid="stMetric"] {
-        padding: 0.25rem;
-    }
-
-    [data-testid="stMetricValue"] {
-        font-size: 1.8rem;
-        font-weight: 700;
-    }
-
-    .small-note {
-        color: #777;
-        font-size: 0.85rem;
-    }
-
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-# =========================================================
-# HELPER FUNCTIONS
-# =========================================================
-
-def go_to_page(page_name):
-    st.session_state.page = page_name
+def go_to_page(page):
+    st.session_state.page = page
     st.rerun()
 
 
-def get_dashboard_data():
-    connection = get_connection()
+# =========================================================
+# DASHBOARD DATA
+# =========================================================
 
-    # -----------------------------------------------------
-    # Revenue by month
-    # -----------------------------------------------------
+def get_dashboard_data():
+
+    connection = get_connection()
 
     revenue_rows = connection.execute(
         """
@@ -128,10 +100,6 @@ def get_dashboard_data():
         ORDER BY month ASC
         """
     ).fetchall()
-
-    # -----------------------------------------------------
-    # Recent activity
-    # -----------------------------------------------------
 
     activity_rows = connection.execute(
         """
@@ -180,10 +148,6 @@ def get_dashboard_data():
         """
     ).fetchall()
 
-    # -----------------------------------------------------
-    # Upcoming tasks
-    # -----------------------------------------------------
-
     task_rows = connection.execute(
         """
         SELECT
@@ -218,41 +182,21 @@ def get_dashboard_data():
         """
     ).fetchall()
 
-    # -----------------------------------------------------
-    # Invoice summary
-    # -----------------------------------------------------
+    proposal_count = connection.execute(
+        "SELECT COUNT(*) FROM proposals"
+    ).fetchone()[0]
 
-    invoice_summary = connection.execute(
-        """
-        SELECT
-            COUNT(*) AS total,
-            SUM(
-                CASE
-                    WHEN status = 'Paid'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS paid,
-            SUM(
-                CASE
-                    WHEN status != 'Paid'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS unpaid,
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN status = 'Paid'
-                        THEN total
-                        ELSE 0
-                    END
-                ),
-                0
-            ) AS paid_revenue
-        FROM invoices
-        """
-    ).fetchone()
+    invoice_count = connection.execute(
+        "SELECT COUNT(*) FROM invoices"
+    ).fetchone()[0]
+
+    project_count = connection.execute(
+        "SELECT COUNT(*) FROM projects"
+    ).fetchone()[0]
+
+    task_count = connection.execute(
+        "SELECT COUNT(*) FROM tasks"
+    ).fetchone()[0]
 
     connection.close()
 
@@ -260,23 +204,23 @@ def get_dashboard_data():
         revenue_rows,
         activity_rows,
         task_rows,
-        invoice_summary,
+        proposal_count,
+        invoice_count,
+        project_count,
+        task_count,
     )
 
 
 def format_date(value):
+
     if not value:
         return "No due date"
 
-    text = str(value)
-
-    if len(text) >= 10:
-        return text[:10]
-
-    return text
+    return str(value)[:10]
 
 
 def activity_icon(activity_type):
+
     icons = {
         "Client": "👤",
         "Project": "📁",
@@ -295,6 +239,7 @@ def activity_icon(activity_type):
 with st.sidebar:
 
     st.markdown("## ✨ ClientFlow AI")
+
     st.caption("Client Management Workspace")
 
     st.divider()
@@ -313,10 +258,6 @@ with st.sidebar:
     st.caption("ClientFlow AI")
     st.caption("v1.0 • Workspace")
 
-
-# =========================================================
-# GET COMMON DATA
-# =========================================================
 
 stats = get_dashboard_stats()
 
@@ -340,34 +281,25 @@ if st.session_state.page == "📊 Dashboard":
     )
 
     # -----------------------------------------------------
-    # TOP METRICS
+    # METRICS
     # -----------------------------------------------------
 
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
         with st.container(border=True):
-            st.metric(
-                "👥 Total Clients",
-                stats["clients"],
-            )
+            st.metric("👥 Total Clients", stats["clients"])
             st.caption("All clients in your workspace")
 
     with col2:
         with st.container(border=True):
-            st.metric(
-                "📁 Active Projects",
-                stats["projects"],
-            )
+            st.metric("📁 Active Projects", stats["projects"])
             st.caption("Projects currently active")
 
     with col3:
         with st.container(border=True):
-            st.metric(
-                "✅ Pending Tasks",
-                stats["tasks"],
-            )
-            st.caption("Tasks that still need attention")
+            st.metric("✅ Pending Tasks", stats["tasks"])
+            st.caption("Tasks still requiring attention")
 
     with col4:
         with st.container(border=True):
@@ -379,19 +311,18 @@ if st.session_state.page == "📊 Dashboard":
 
     st.write("")
 
-    # -----------------------------------------------------
-    # LOAD DASHBOARD DATA
-    # -----------------------------------------------------
-
     (
         revenue_rows,
         activity_rows,
         task_rows,
-        invoice_summary,
+        proposal_count,
+        invoice_count,
+        project_count,
+        task_count,
     ) = get_dashboard_data()
 
     # -----------------------------------------------------
-    # REVENUE + UPCOMING TASKS
+    # REVENUE + TASKS
     # -----------------------------------------------------
 
     left, right = st.columns([1.6, 1])
@@ -401,7 +332,10 @@ if st.session_state.page == "📊 Dashboard":
         with st.container(border=True):
 
             st.subheader("Revenue Overview")
-            st.caption("Revenue collected from paid invoices")
+
+            st.caption(
+                "Revenue collected from paid invoices"
+            )
 
             if revenue_rows:
 
@@ -419,7 +353,8 @@ if st.session_state.page == "📊 Dashboard":
 
                 st.info(
                     "No paid invoices yet. "
-                    "Create and mark an invoice as Paid to see revenue here."
+                    "Create an invoice and mark it as Paid "
+                    "to see revenue here."
                 )
 
     with right:
@@ -427,7 +362,10 @@ if st.session_state.page == "📊 Dashboard":
         with st.container(border=True):
 
             st.subheader("Upcoming Tasks")
-            st.caption("Your next tasks requiring attention")
+
+            st.caption(
+                "Your next tasks requiring attention"
+            )
 
             if task_rows:
 
@@ -452,7 +390,9 @@ if st.session_state.page == "📊 Dashboard":
                         f"⚡ {task['priority']}"
                     )
 
-                    st.caption(" • ".join(details))
+                    st.caption(
+                        " • ".join(details)
+                    )
 
                     st.divider()
 
@@ -475,7 +415,10 @@ if st.session_state.page == "📊 Dashboard":
         with st.container(border=True):
 
             st.subheader("Recent Activity")
-            st.caption("Latest activity across your workspace")
+
+            st.caption(
+                "Latest activity across your workspace"
+            )
 
             if activity_rows:
 
@@ -491,6 +434,7 @@ if st.session_state.page == "📊 Dashboard":
                     )
 
                     if activity["created_at"]:
+
                         st.caption(
                             str(activity["created_at"])
                         )
@@ -510,29 +454,10 @@ if st.session_state.page == "📊 Dashboard":
         with st.container(border=True):
 
             st.subheader("Workspace Snapshot")
-            st.caption("Quick overview of your business")
 
-            proposal_count = connection_count = 0
-
-            connection = get_connection()
-
-            proposal_count = connection.execute(
-                "SELECT COUNT(*) FROM proposals"
-            ).fetchone()[0]
-
-            invoice_count = connection.execute(
-                "SELECT COUNT(*) FROM invoices"
-            ).fetchone()[0]
-
-            project_count = connection.execute(
-                "SELECT COUNT(*) FROM projects"
-            ).fetchone()[0]
-
-            task_count = connection.execute(
-                "SELECT COUNT(*) FROM tasks"
-            ).fetchone()[0]
-
-            connection.close()
+            st.caption(
+                "Quick overview of your business"
+            )
 
             st.metric(
                 "📄 Proposals",
@@ -563,6 +488,7 @@ if st.session_state.page == "📊 Dashboard":
     with st.container(border=True):
 
         st.subheader("Quick Actions")
+
         st.caption(
             "Jump directly to the area you want to manage."
         )
@@ -570,6 +496,7 @@ if st.session_state.page == "📊 Dashboard":
         q1, q2, q3, q4 = st.columns(4)
 
         with q1:
+
             if st.button(
                 "👥 Add Client",
                 use_container_width=True,
@@ -577,6 +504,7 @@ if st.session_state.page == "📊 Dashboard":
                 go_to_page("👥 Clients")
 
         with q2:
+
             if st.button(
                 "📁 New Project",
                 use_container_width=True,
@@ -584,6 +512,7 @@ if st.session_state.page == "📊 Dashboard":
                 go_to_page("📁 Projects")
 
         with q3:
+
             if st.button(
                 "📄 Create Proposal",
                 use_container_width=True,
@@ -591,6 +520,7 @@ if st.session_state.page == "📊 Dashboard":
                 go_to_page("📄 Proposals")
 
         with q4:
+
             if st.button(
                 "💰 Create Invoice",
                 use_container_width=True,
@@ -641,22 +571,7 @@ if st.session_state.page == "📊 Dashboard":
 
 elif st.session_state.page == "👥 Clients":
 
-    st.title("👥 Clients")
-    st.caption(
-        "Manage your clients and customer relationships."
-    )
-
-    render_clients_page = None
-
-    try:
-        from modules.clients import render_clients_page
-    except Exception as error:
-        st.error(
-            f"Unable to load Clients module: {error}"
-        )
-
-    if render_clients_page:
-        render_clients_page()
+    render_clients_page()
 
 
 # =========================================================
@@ -665,22 +580,7 @@ elif st.session_state.page == "👥 Clients":
 
 elif st.session_state.page == "📁 Projects":
 
-    st.title("📁 Projects")
-    st.caption(
-        "Track projects, deadlines, priorities, and progress."
-    )
-
-    render_projects_page = None
-
-    try:
-        from modules.projects import render_projects_page
-    except Exception as error:
-        st.error(
-            f"Unable to load Projects module: {error}"
-        )
-
-    if render_projects_page:
-        render_projects_page()
+    render_projects_page()
 
 
 # =========================================================
@@ -689,22 +589,7 @@ elif st.session_state.page == "📁 Projects":
 
 elif st.session_state.page == "✅ Tasks":
 
-    st.title("✅ Tasks")
-    st.caption(
-        "Manage tasks, deadlines, priorities, and status."
-    )
-
-    render_tasks_page = None
-
-    try:
-        from modules.tasks import render_tasks_page
-    except Exception as error:
-        st.error(
-            f"Unable to load Tasks module: {error}"
-        )
-
-    if render_tasks_page:
-        render_tasks_page()
+    render_tasks_page()
 
 
 # =========================================================
@@ -713,22 +598,7 @@ elif st.session_state.page == "✅ Tasks":
 
 elif st.session_state.page == "📄 Proposals":
 
-    st.title("📄 Proposals")
-    st.caption(
-        "Create and manage client proposals."
-    )
-
-    render_proposals_page = None
-
-    try:
-        from modules.proposals import render_proposals_page
-    except Exception as error:
-        st.error(
-            f"Unable to load Proposals module: {error}"
-        )
-
-    if render_proposals_page:
-        render_proposals_page()
+    render_proposals_page()
 
 
 # =========================================================
@@ -738,12 +608,13 @@ elif st.session_state.page == "📄 Proposals":
 elif st.session_state.page == "💰 Invoices":
 
     st.title("💰 Invoices")
+
     st.caption(
         "Create invoices and track outstanding payments."
     )
 
     st.info(
-        "Invoice management is ready for the next module build."
+        "Invoice management module is coming next."
     )
 
 
@@ -754,6 +625,7 @@ elif st.session_state.page == "💰 Invoices":
 elif st.session_state.page == "🤖 AI Assistant":
 
     st.title("🤖 AI Assistant")
+
     st.caption(
         "Your intelligent workspace assistant."
     )
@@ -770,6 +642,7 @@ elif st.session_state.page == "🤖 AI Assistant":
 elif st.session_state.page == "📈 Reports":
 
     st.title("📈 Reports")
+
     st.caption(
         "Business performance and client reporting."
     )
@@ -777,4 +650,3 @@ elif st.session_state.page == "📈 Reports":
     st.info(
         "Reports module is coming next."
     )
-```
