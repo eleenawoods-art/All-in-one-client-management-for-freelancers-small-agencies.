@@ -7,7 +7,6 @@ from pathlib import Path
 # =========================================================
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 DB_PATH = BASE_DIR / "data" / "clientflow.db"
 
 
@@ -16,7 +15,6 @@ DB_PATH = BASE_DIR / "data" / "clientflow.db"
 # =========================================================
 
 def get_connection():
-
     DB_PATH.parent.mkdir(
         parents=True,
         exist_ok=True,
@@ -30,7 +28,6 @@ def get_connection():
 
     connection.row_factory = sqlite3.Row
 
-    # Better reliability when multiple Streamlit sessions access SQLite.
     connection.execute("PRAGMA foreign_keys = ON")
     connection.execute("PRAGMA busy_timeout = 30000")
 
@@ -47,7 +44,6 @@ def add_column_if_missing(
     column_name,
     column_definition,
 ):
-
     columns = connection.execute(
         f"PRAGMA table_info({table_name})"
     ).fetchall()
@@ -58,7 +54,6 @@ def add_column_if_missing(
     }
 
     if column_name not in existing_columns:
-
         connection.execute(
             f"""
             ALTER TABLE {table_name}
@@ -70,10 +65,7 @@ def add_column_if_missing(
 
 def migrate_database(connection):
 
-    # -----------------------------------------------------
-    # TASKS MIGRATION
-    # -----------------------------------------------------
-
+    # TASKS
     add_column_if_missing(
         connection,
         "tasks",
@@ -95,10 +87,7 @@ def migrate_database(connection):
         "TEXT",
     )
 
-    # -----------------------------------------------------
-    # Keep old deadline data compatible with due_date
-    # -----------------------------------------------------
-
+    # Keep old deadline data compatible
     connection.execute(
         """
         UPDATE tasks
@@ -120,7 +109,6 @@ def migrate_database(connection):
 def init_db():
 
     connection = get_connection()
-
     cursor = connection.cursor()
 
     cursor.executescript(
@@ -299,13 +287,8 @@ def init_db():
 
     connection.commit()
 
-    # -----------------------------------------------------
-    # Run migrations AFTER tables exist
-    # -----------------------------------------------------
-
     migrate_database(connection)
 
-    # Helpful indexes for common ClientFlow lookups.
     connection.executescript(
         """
         CREATE INDEX IF NOT EXISTS idx_projects_client_id
@@ -339,7 +322,6 @@ def init_db():
 def get_dashboard_stats():
 
     connection = get_connection()
-
     cursor = connection.cursor()
 
     clients = cursor.execute(
@@ -357,10 +339,6 @@ def get_dashboard_stats():
         """
     ).fetchone()[0]
 
-    # -----------------------------------------------------
-    # Pending tasks
-    # -----------------------------------------------------
-
     tasks = cursor.execute(
         """
         SELECT COUNT(*)
@@ -377,11 +355,237 @@ def get_dashboard_stats():
         """
     ).fetchone()[0]
 
+    paid_revenue = cursor.execute(
+        """
+        SELECT COALESCE(SUM(total), 0)
+        FROM invoices
+        WHERE status = 'Paid'
+        """
+    ).fetchone()[0]
+
+    total_invoices = cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM invoices
+        """
+    ).fetchone()[0]
+
+    paid_invoices = cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM invoices
+        WHERE status = 'Paid'
+        """
+    ).fetchone()[0]
+
+    proposals = cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM proposals
+        """
+    ).fetchone()[0]
+
     connection.close()
 
     return {
         "clients": clients,
         "projects": projects,
         "tasks": tasks,
-        "outstanding": outstanding,
+        "outstanding": outstanding or 0,
+        "paid_revenue": paid_revenue or 0,
+        "total_invoices": total_invoices,
+        "paid_invoices": paid_invoices,
+        "proposals": proposals,
     }
+
+
+# =========================================================
+# REVENUE OVERVIEW
+# =========================================================
+
+def get_revenue_overview():
+
+    connection = get_connection()
+
+    rows = connection.execute(
+        """
+        SELECT
+            substr(created_at, 1, 7) AS month,
+            COALESCE(SUM(total), 0) AS revenue
+        FROM invoices
+        WHERE status = 'Paid'
+        GROUP BY substr(created_at, 1, 7)
+        ORDER BY month ASC
+        LIMIT 12
+        """
+    ).fetchall()
+
+    connection.close()
+
+    return [
+        {
+            "month": row["month"],
+            "revenue": float(row["revenue"] or 0),
+        }
+        for row in rows
+    ]
+
+
+# =========================================================
+# RECENT ACTIVITY
+# =========================================================
+
+def get_recent_activity(limit=8):
+
+    connection = get_connection()
+
+    activities = []
+
+    client_rows = connection.execute(
+        """
+        SELECT
+            name,
+            created_at
+        FROM clients
+        ORDER BY id DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+
+    for row in client_rows:
+        activities.append(
+            {
+                "type": "Client",
+                "title": f"New client: {row['name']}",
+                "created_at": row["created_at"],
+            }
+        )
+
+    project_rows = connection.execute(
+        """
+        SELECT
+            name,
+            created_at
+        FROM projects
+        ORDER BY id DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+
+    for row in project_rows:
+        activities.append(
+            {
+                "type": "Project",
+                "title": f"Project created: {row['name']}",
+                "created_at": row["created_at"],
+            }
+        )
+
+    proposal_rows = connection.execute(
+        """
+        SELECT
+            title,
+            status,
+            created_at
+        FROM proposals
+        ORDER BY id DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+
+    for row in proposal_rows:
+        activities.append(
+            {
+                "type": "Proposal",
+                "title": f"Proposal: {row['title']} ({row['status']})",
+                "created_at": row["created_at"],
+            }
+        )
+
+    invoice_rows = connection.execute(
+        """
+        SELECT
+            invoice_number,
+            total,
+            status,
+            created_at
+        FROM invoices
+        ORDER BY id DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+
+    for row in invoice_rows:
+        invoice_name = row["invoice_number"] or "Invoice"
+
+        activities.append(
+            {
+                "type": "Invoice",
+                "title": (
+                    f"{invoice_name}: "
+                    f"${float(row['total'] or 0):,.2f} "
+                    f"({row['status']})"
+                ),
+                "created_at": row["created_at"],
+            }
+        )
+
+    connection.close()
+
+    activities.sort(
+        key=lambda item: item["created_at"] or "",
+        reverse=True,
+    )
+
+    return activities[:limit]
+
+
+# =========================================================
+# UPCOMING TASKS
+# =========================================================
+
+def get_upcoming_tasks(limit=5):
+
+    connection = get_connection()
+
+    rows = connection.execute(
+        """
+        SELECT
+            tasks.title,
+            tasks.due_date,
+            tasks.deadline,
+            tasks.priority,
+            tasks.status,
+            projects.name AS project_name
+        FROM tasks
+        LEFT JOIN projects
+            ON tasks.project_id = projects.id
+        WHERE tasks.status != 'Done'
+        ORDER BY
+            CASE
+                WHEN tasks.due_date IS NULL
+                    OR tasks.due_date = ''
+                THEN tasks.deadline
+                ELSE tasks.due_date
+            END ASC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+
+    connection.close()
+
+    return [
+        {
+            "title": row["title"],
+            "due_date": row["due_date"] or row["deadline"],
+            "priority": row["priority"],
+            "status": row["status"],
+            "project_name": row["project_name"],
+        }
+        for row in rows
+    ]
