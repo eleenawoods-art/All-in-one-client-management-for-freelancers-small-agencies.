@@ -1,3 +1,4 @@
+```python
 import streamlit as st
 
 from modules.database import (
@@ -48,52 +49,46 @@ st.markdown(
     }
 
     [data-testid="stSidebar"] {
-        border-right: 1px solid rgba(128,128,128,.18);
+        border-right: 1px solid rgba(128,128,128,.16);
     }
 
     .brand {
         font-size: 1.45rem;
         font-weight: 800;
         letter-spacing: -0.04em;
-        margin-bottom: .3rem;
     }
 
     .brand-subtitle {
         font-size: .78rem;
         color: #888;
-        margin-bottom: 1.5rem;
+        margin-top: .15rem;
+        margin-bottom: 1.4rem;
     }
 
     .hero-title {
         font-size: 2.35rem;
         font-weight: 800;
-        letter-spacing: -0.055em;
-        margin-bottom: .25rem;
+        letter-spacing: -.055em;
+        margin-bottom: .2rem;
     }
 
     .subtitle {
         color: #777;
-        margin-bottom: 1.8rem;
         font-size: 1rem;
+        margin-bottom: 1.8rem;
     }
 
     .metric-card {
-        padding: 1.25rem;
-        border: 1px solid rgba(128,128,128,.18);
+        border: 1px solid rgba(128,128,128,.16);
         border-radius: 18px;
-        background: rgba(128,128,128,.035);
-        min-height: 128px;
-        transition: .2s ease;
-    }
-
-    .metric-card:hover {
-        transform: translateY(-2px);
-        border-color: rgba(128,128,128,.35);
+        padding: 1.25rem;
+        min-height: 135px;
+        background: rgba(128,128,128,.025);
     }
 
     .metric-icon {
         font-size: 1.25rem;
-        margin-bottom: .45rem;
+        margin-bottom: .5rem;
     }
 
     .metric-label {
@@ -104,8 +99,8 @@ st.markdown(
     .metric-value {
         font-size: 1.9rem;
         font-weight: 800;
-        margin-top: .25rem;
         letter-spacing: -.04em;
+        margin-top: .2rem;
     }
 
     .metric-description {
@@ -121,77 +116,77 @@ st.markdown(
     }
 
     .dashboard-card {
-        padding: 1.35rem;
-        border: 1px solid rgba(128,128,128,.18);
+        border: 1px solid rgba(128,128,128,.16);
         border-radius: 18px;
-        background: rgba(128,128,128,.025);
+        padding: 1.3rem;
+        background: rgba(128,128,128,.02);
     }
 
     .card-heading {
         font-size: 1.05rem;
         font-weight: 750;
-        margin-bottom: .15rem;
     }
 
     .card-subheading {
         font-size: .78rem;
         color: #888;
-        margin-bottom: 1rem;
-    }
-
-    .activity-item {
-        padding: .7rem 0;
-        border-bottom: 1px solid rgba(128,128,128,.12);
-    }
-
-    .activity-item:last-child {
-        border-bottom: none;
-    }
-
-    .activity-title {
-        font-size: .85rem;
-        font-weight: 600;
-    }
-
-    .activity-date {
-        font-size: .72rem;
-        color: #888;
         margin-top: .15rem;
-    }
-
-    .task-item {
-        padding: .75rem;
-        margin-bottom: .55rem;
-        border: 1px solid rgba(128,128,128,.13);
-        border-radius: 12px;
-    }
-
-    .task-title {
-        font-size: .85rem;
-        font-weight: 650;
-    }
-
-    .task-meta {
-        font-size: .72rem;
-        color: #888;
-        margin-top: .25rem;
+        margin-bottom: 1rem;
     }
 
     .empty-state {
         text-align: center;
-        padding: 2.2rem 1rem;
+        padding: 2rem 1rem;
         color: #888;
     }
 
     .empty-icon {
         font-size: 2rem;
-        margin-bottom: .4rem;
+        margin-bottom: .35rem;
     }
 
     .empty-title {
-        color: inherit;
         font-weight: 700;
-        margin-bottom: .2rem;
+        color: #777;
+        margin-bottom: .25rem;
+    }
+
+    .activity-row {
+        padding: .72rem 0;
+        border-bottom: 1px solid rgba(128,128,128,.11);
+    }
+
+    .activity-row:last-child {
+        border-bottom: none;
+    }
+
+    .activity-title {
+        font-size: .84rem;
+        font-weight: 600;
+    }
+
+    .activity-date {
+        font-size: .7rem;
+        color: #888;
+        margin-top: .15rem;
+    }
+
+    .task-row {
+        padding: .75rem;
+        margin-bottom: .55rem;
+        border: 1px solid rgba(128,128,128,.12);
+        border-radius: 12px;
+    }
+
+    .task-name {
+        font-size: .84rem;
+        font-weight: 650;
+    }
+
+    .task-meta {
+        font-size: .7rem;
+        color: #888;
+        margin-top: .25rem;
     }
 
     </style>
@@ -213,8 +208,8 @@ with st.sidebar:
 
     st.markdown(
         '<div class="brand-subtitle">'
-        "Client Management Workspace"
-        "</div>",
+        'Client Management Workspace'
+        '</div>',
         unsafe_allow_html=True,
     )
 
@@ -239,18 +234,9 @@ with st.sidebar:
 
     st.caption("WORKSPACE")
 
-    st.markdown(
-        """
-        <div style="
-            font-size:.82rem;
-            line-height:1.5;
-            color:#777;
-        ">
-        All-in-one client management for
-        freelancers & small agencies.
-        </div>
-        """,
-        unsafe_allow_html=True,
+    st.caption(
+        "All-in-one client management for "
+        "freelancers & small agencies."
     )
 
     st.divider()
@@ -259,7 +245,7 @@ with st.sidebar:
 
 
 # =========================================================
-# LOAD DASHBOARD DATA
+# DASHBOARD DATA
 # =========================================================
 
 stats = get_dashboard_stats()
@@ -283,14 +269,14 @@ if page == "📊 Dashboard":
         unsafe_allow_html=True,
     )
 
-    # -----------------------------------------------------
+
+    # =====================================================
     # METRICS
-    # -----------------------------------------------------
+    # =====================================================
 
-    col1, col2, col3, col4 = st.columns(4)
+    c1, c2, c3, c4 = st.columns(4)
 
-    with col1:
-
+    with c1:
         st.markdown(
             f"""
             <div class="metric-card">
@@ -307,8 +293,7 @@ if page == "📊 Dashboard":
             unsafe_allow_html=True,
         )
 
-    with col2:
-
+    with c2:
         st.markdown(
             f"""
             <div class="metric-card">
@@ -325,8 +310,7 @@ if page == "📊 Dashboard":
             unsafe_allow_html=True,
         )
 
-    with col3:
-
+    with c3:
         st.markdown(
             f"""
             <div class="metric-card">
@@ -343,8 +327,7 @@ if page == "📊 Dashboard":
             unsafe_allow_html=True,
         )
 
-    with col4:
-
+    with c4:
         st.markdown(
             f"""
             <div class="metric-card">
@@ -361,60 +344,59 @@ if page == "📊 Dashboard":
             unsafe_allow_html=True,
         )
 
-    # -----------------------------------------------------
+
+    # =====================================================
     # BUSINESS OVERVIEW
-    # -----------------------------------------------------
+    # =====================================================
 
     st.markdown(
-        '<div class="section-title">Business Overview</div>',
+        '<div class="section-title">'
+        'Business Overview'
+        '</div>',
         unsafe_allow_html=True,
     )
 
     left, right = st.columns([1.55, 1])
 
+
     # =====================================================
-    # LEFT COLUMN
+    # REVENUE
     # =====================================================
 
     with left:
 
-        # -------------------------------------------------
-        # REVENUE
-        # -------------------------------------------------
-
         st.markdown(
             """
             <div class="dashboard-card">
-                <div class="card-heading">
-                    Revenue Overview
-                </div>
 
-                <div class="card-subheading">
-                    Revenue from paid invoices
-                </div>
+            <div class="card-heading">
+                Revenue Overview
+            </div>
+
+            <div class="card-subheading">
+                Revenue from paid invoices
+            </div>
             """,
             unsafe_allow_html=True,
         )
 
-        revenue_data = get_revenue_overview()
+        revenue = get_revenue_overview()
 
-        if revenue_data:
+        if revenue:
 
-            chart_data = {
+            chart = {
                 item["month"]: item["revenue"]
-                for item in revenue_data
+                for item in revenue
             }
 
             st.bar_chart(
-                chart_data,
-                height=260,
+                chart,
+                height=250,
             )
-
-            total_revenue = stats["paid_revenue"]
 
             st.caption(
                 f"Total paid revenue: "
-                f"${total_revenue:,.2f}"
+                f"${stats['paid_revenue']:,.2f}"
             )
 
         else:
@@ -435,42 +417,48 @@ if page == "📊 Dashboard":
                 unsafe_allow_html=True,
             )
 
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # -------------------------------------------------
+
+        # =================================================
         # UPCOMING TASKS
-        # -------------------------------------------------
+        # =================================================
 
         st.markdown(
             """
             <div class="dashboard-card">
-                <div class="card-heading">
-                    Upcoming Tasks
-                </div>
 
-                <div class="card-subheading">
-                    Tasks that still need attention
-                </div>
+            <div class="card-heading">
+                Upcoming Tasks
+            </div>
+
+            <div class="card-subheading">
+                Tasks that still need attention
+            </div>
             """,
             unsafe_allow_html=True,
         )
 
-        upcoming_tasks = get_upcoming_tasks()
+        tasks = get_upcoming_tasks()
 
-        if upcoming_tasks:
+        if tasks:
 
-            for task in upcoming_tasks:
+            for task in tasks:
 
                 due = task["due_date"] or "No due date"
-
                 project = task["project_name"] or "No project"
 
                 st.markdown(
                     f"""
-                    <div class="task-item">
-                        <div class="task-title">
+                    <div class="task-row">
+
+                        <div class="task-name">
                             {task["title"]}
                         </div>
 
@@ -481,6 +469,7 @@ if page == "📊 Dashboard":
                             &nbsp; • &nbsp;
                             {task["priority"]}
                         </div>
+
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -503,7 +492,11 @@ if page == "📊 Dashboard":
                 unsafe_allow_html=True,
             )
 
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
 
     # =====================================================
     # RIGHT COLUMN
@@ -511,103 +504,102 @@ if page == "📊 Dashboard":
 
     with right:
 
-        # -------------------------------------------------
+        # =================================================
         # QUICK ACTIONS
-        # -------------------------------------------------
+        # =================================================
 
         st.markdown(
             """
             <div class="dashboard-card">
-                <div class="card-heading">
-                    Quick Actions
-                </div>
 
-                <div class="card-subheading">
-                    Get things done faster
-                </div>
+            <div class="card-heading">
+                Quick Actions
+            </div>
+
+            <div class="card-subheading">
+                Jump directly into your workflow
+            </div>
             """,
             unsafe_allow_html=True,
         )
 
         if st.button(
-            "＋  Add Client",
+            "＋ Add Client",
             use_container_width=True,
+            key="quick_client",
         ):
-            st.session_state["dashboard_message"] = (
-                "Open **👥 Clients** from the sidebar."
-            )
+            st.session_state["page"] = "👥 Clients"
+            st.rerun()
 
         if st.button(
-            "＋  Create Project",
+            "＋ Create Project",
             use_container_width=True,
+            key="quick_project",
         ):
-            st.session_state["dashboard_message"] = (
-                "Open **📁 Projects** from the sidebar."
-            )
+            st.session_state["page"] = "📁 Projects"
+            st.rerun()
 
         if st.button(
-            "＋  Create Task",
+            "＋ Create Task",
             use_container_width=True,
+            key="quick_task",
         ):
-            st.session_state["dashboard_message"] = (
-                "Open **✅ Tasks** from the sidebar."
-            )
+            st.session_state["page"] = "✅ Tasks"
+            st.rerun()
 
         if st.button(
-            "＋  Create Proposal",
+            "＋ Create Proposal",
             use_container_width=True,
+            key="quick_proposal",
         ):
-            st.session_state["dashboard_message"] = (
-                "Open **📄 Proposals** from the sidebar."
-            )
+            st.session_state["page"] = "📄 Proposals"
+            st.rerun()
 
         if st.button(
-            "＋  Create Invoice",
+            "＋ Create Invoice",
             use_container_width=True,
+            key="quick_invoice",
         ):
-            st.session_state["dashboard_message"] = (
-                "Invoice Generator is coming soon."
-            )
+            st.session_state["page"] = "💰 Invoices"
+            st.rerun()
 
-        if "dashboard_message" in st.session_state:
+        st.markdown(
+            "</div>",
+            unsafe_allow_html=True,
+        )
 
-            st.info(
-                st.session_state["dashboard_message"]
-            )
-
-        st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # -------------------------------------------------
-        # WORKSPACE SNAPSHOT
-        # -------------------------------------------------
+
+        # =================================================
+        # SNAPSHOT
+        # =================================================
 
         st.markdown(
             """
             <div class="dashboard-card">
-                <div class="card-heading">
-                    Workspace Snapshot
-                </div>
 
-                <div class="card-subheading">
-                    Your current business pipeline
-                </div>
+            <div class="card-heading">
+                Workspace Snapshot
+            </div>
+
+            <div class="card-subheading">
+                Your current business pipeline
+            </div>
             """,
             unsafe_allow_html=True,
         )
 
-        snap1, snap2 = st.columns(2)
+        s1, s2 = st.columns(2)
 
-        with snap1:
-
+        with s1:
             st.metric(
                 "Proposals",
                 stats["proposals"],
             )
 
-        with snap2:
-
+        with s2:
             st.metric(
                 "Invoices",
                 stats["total_invoices"],
@@ -628,7 +620,7 @@ if page == "📊 Dashboard":
             )
 
             st.progress(
-                min(payment_rate / 100, 1.0)
+                int(payment_rate)
             )
 
         else:
@@ -638,20 +630,27 @@ if page == "📊 Dashboard":
                 "as invoices are added."
             )
 
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
 
     # =====================================================
     # RECENT ACTIVITY
     # =====================================================
 
     st.markdown(
-        '<div class="section-title">Recent Activity</div>',
+        '<div class="section-title">'
+        'Recent Activity'
+        '</div>',
         unsafe_allow_html=True,
     )
 
     activity_left, activity_right = st.columns(
-        [1.4, 1]
+        [1.45, 1]
     )
+
 
     with activity_left:
 
@@ -659,13 +658,13 @@ if page == "📊 Dashboard":
             """
             <div class="dashboard-card">
 
-                <div class="card-heading">
-                    Latest Activity
-                </div>
+            <div class="card-heading">
+                Latest Activity
+            </div>
 
-                <div class="card-subheading">
-                    Recent changes across your workspace
-                </div>
+            <div class="card-subheading">
+                Recent changes across your workspace
+            </div>
             """,
             unsafe_allow_html=True,
         )
@@ -690,11 +689,10 @@ if page == "📊 Dashboard":
 
                 st.markdown(
                     f"""
-                    <div class="activity-item">
+                    <div class="activity-row">
 
                         <div class="activity-title">
-                            {icon}
-                            {activity["title"]}
+                            {icon} {activity["title"]}
                         </div>
 
                         <div class="activity-date">
@@ -724,7 +722,15 @@ if page == "📊 Dashboard":
                 unsafe_allow_html=True,
             )
 
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+
+    # =====================================================
+    # GETTING STARTED
+    # =====================================================
 
     with activity_right:
 
@@ -732,13 +738,13 @@ if page == "📊 Dashboard":
             """
             <div class="dashboard-card">
 
-                <div class="card-heading">
-                    Getting Started
-                </div>
+            <div class="card-heading">
+                Getting Started
+            </div>
 
-                <div class="card-subheading">
-                    Build your workspace step by step
-                </div>
+            <div class="card-subheading">
+                Build your workspace step by step
+            </div>
             """,
             unsafe_allow_html=True,
         )
@@ -756,32 +762,60 @@ if page == "📊 Dashboard":
                 """
             )
 
+            if st.button(
+                "Add your first client →",
+                use_container_width=True,
+                key="getting_started_client",
+            ):
+                st.session_state["page"] = "👥 Clients"
+                st.rerun()
+
+        elif stats["projects"] == 0:
+
+            st.success(
+                f"You have {stats['clients']} client(s)."
+            )
+
+            st.info(
+                "Next step: create your first project."
+            )
+
+            if st.button(
+                "Create a project →",
+                use_container_width=True,
+                key="getting_started_project",
+            ):
+                st.session_state["page"] = "📁 Projects"
+                st.rerun()
+
+        elif stats["tasks"] == 0:
+
+            st.success(
+                "Your client and project workspace is ready."
+            )
+
+            st.info(
+                "Next step: create your first task."
+            )
+
+            if st.button(
+                "Create a task →",
+                use_container_width=True,
+                key="getting_started_task",
+            ):
+                st.session_state["page"] = "✅ Tasks"
+                st.rerun()
+
         else:
 
             st.success(
-                f"Your workspace currently has "
-                f"**{stats['clients']} client(s)**."
+                "Your ClientFlow workspace is up and running."
             )
 
-            if stats["projects"] == 0:
-
-                st.info(
-                    "Next step: create your first project."
-                )
-
-            elif stats["tasks"] == 0:
-
-                st.info(
-                    "Next step: create a task for your project."
-                )
-
-            else:
-
-                st.success(
-                    "Your core workspace is up and running."
-                )
-
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(
+            "</div>",
+            unsafe_allow_html=True,
+        )
 
 
 # =========================================================
@@ -870,3 +904,4 @@ elif page == "📈 Reports":
     st.info(
         "🚧 Reports & analytics are coming soon."
     )
+```
